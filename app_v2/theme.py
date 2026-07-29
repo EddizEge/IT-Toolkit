@@ -125,7 +125,7 @@ def build_stylesheet() -> str:
         color: {COLORS["muted"]};
         font-size: 13px;
         font-weight: 600;
-        min-height: 43px;
+        min-height: 39px;
         padding: 0 12px;
         text-align: left;
     }}
@@ -175,6 +175,20 @@ def build_stylesheet() -> str:
         min-height: 36px;
         padding: 0 10px;
         selection-background-color: {COLORS["primary"]};
+    }}
+
+    QLineEdit#PaletteSearch {{
+        background: {COLORS["surface_alt"]};
+        border: 1px solid {COLORS["border"]};
+        border-radius: 10px;
+        min-height: 42px;
+        padding: 0 13px;
+        font-size: 14px;
+        selection-background-color: {COLORS["primary"]};
+    }}
+
+    QLineEdit#PaletteSearch:focus {{
+        border: 1px solid {COLORS["primary"]};
     }}
 
     QLineEdit#DialogInput:focus, QComboBox:focus {{
@@ -251,7 +265,7 @@ def build_stylesheet() -> str:
     }}
 
     QFrame#Card, QFrame#Panel, QFrame#ActionTile, QFrame#ToggleRow,
-    QFrame#TaskSummaryCard {{
+    QFrame#TaskSummaryCard, QFrame#QuickAccessRow {{
         background: {COLORS["surface"]};
         border: 1px solid {COLORS["border_soft"]};
         border-radius: 13px;
@@ -330,6 +344,28 @@ def build_stylesheet() -> str:
         background: transparent;
         border: 0;
         outline: 0;
+    }}
+
+    QListWidget#PaletteList {{
+        background: transparent;
+        border: 0;
+        outline: 0;
+    }}
+
+    QListWidget#PaletteList::item {{
+        background: {COLORS["surface"]};
+        border: 1px solid {COLORS["border_soft"]};
+        border-radius: 9px;
+        color: {COLORS["muted"]};
+        min-height: 50px;
+        padding: 9px 12px;
+        margin: 3px 0;
+    }}
+
+    QListWidget#PaletteList::item:selected {{
+        background: #20324F;
+        border: 1px solid #31558A;
+        color: #B9D2FF;
     }}
 
     QListWidget#TaskList::item {{
@@ -422,6 +458,38 @@ def build_stylesheet() -> str:
         background: #20324F;
         border: 1px solid #31558A;
         color: #8BB6FF;
+    }}
+
+    QPushButton#FavoriteButton, QPushButton#IconButton {{
+        background: transparent;
+        border: 1px solid {COLORS["border"]};
+        border-radius: 8px;
+        color: {COLORS["muted"]};
+        min-width: 30px;
+        min-height: 30px;
+        max-width: 34px;
+        max-height: 34px;
+        font-size: 17px;
+        font-weight: 700;
+    }}
+
+    QPushButton#FavoriteButton:hover, QPushButton#IconButton:hover {{
+        background: {COLORS["surface_hover"]};
+        color: {COLORS["text"]};
+    }}
+
+    QPushButton#FavoriteButton[selected="true"] {{
+        background: #3B311C;
+        border: 1px solid #6A5727;
+        color: #FFD26A;
+    }}
+
+    QLabel#EmptyState {{
+        background: #111720;
+        border: 1px dashed {COLORS["border"]};
+        border-radius: 10px;
+        color: {COLORS["muted"]};
+        padding: 14px;
     }}
 
     QPushButton#DangerButton {{

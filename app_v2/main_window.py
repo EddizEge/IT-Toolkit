@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from PySide6.QtCore import QSize, Qt, QTimer
-from PySide6.QtGui import QCloseEvent, QResizeEvent
+from PySide6.QtGui import QCloseEvent, QKeySequence, QResizeEvent, QShortcut
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 )
 
 from app_v2 import __version__
+from app_v2.command_palette import CommandPalette
 from app_v2.icons import monochrome_icon, navigation_icon
 from app_v2.pages.dashboard import DashboardPage
 from app_v2.pages.data import DataPage
@@ -26,12 +27,14 @@ from app_v2.pages.network import NetworkPage
 from app_v2.pages.office import OfficePage
 from app_v2.pages.programs import ProgramsPage
 from app_v2.pages.quick import QuickPage
+from app_v2.pages.quick_access import QuickAccessPage
 from app_v2.pages.search import SearchPage
 from app_v2.pages.system import SystemPage
 from app_v2.pages.tasks import TaskCenterPage
 from app_v2.pages.tools_page import ToolsPage
 from app_v2.registry import ToolAction
 from app_v2.services.command_runner import is_running_as_admin
+from app_v2.services.preferences import ToolPreferences
 from app_v2.services.task_manager import ACTIVE_STATUSES, TaskManager
 from app_v2.theme import create_app_icon
 from app_v2.widgets import ToastNotification
@@ -50,6 +53,9 @@ class MainWindow(QMainWindow):
         self._current_page = "dashboard"
         self._page_before_search = "dashboard"
         self.task_manager = TaskManager(self)
+        self.preferences = ToolPreferences(self)
+        self.command_palette = CommandPalette(self.preferences, self)
+        self.command_palette.action_requested.connect(self._run_search_result)
 
         root = QWidget()
         root.setObjectName("AppRoot")
@@ -72,17 +78,51 @@ class MainWindow(QMainWindow):
 
         self._page_factories: dict[str, Callable[[], QWidget]] = {
             "dashboard": DashboardPage,
+            "access": lambda: QuickAccessPage(
+                self.preferences,
+                self.task_manager,
+            ),
             "tasks": lambda: TaskCenterPage(self.task_manager),
-            "system": lambda: SystemPage(task_manager=self.task_manager),
-            "network": lambda: NetworkPage(task_manager=self.task_manager),
-            "quick": lambda: QuickPage(task_manager=self.task_manager),
-            "data": lambda: DataPage(task_manager=self.task_manager),
-            "programs": lambda: ProgramsPage(task_manager=self.task_manager),
-            "office": lambda: OfficePage(task_manager=self.task_manager),
-            "mail": lambda: MailPage(task_manager=self.task_manager),
-            "iso": lambda: IsoPage(task_manager=self.task_manager),
-            "search": SearchPage,
+            "system": lambda: SystemPage(
+                task_manager=self.task_manager,
+                preferences=self.preferences,
+            ),
+            "network": lambda: NetworkPage(
+                task_manager=self.task_manager,
+                preferences=self.preferences,
+            ),
+            "quick": lambda: QuickPage(
+                task_manager=self.task_manager,
+                preferences=self.preferences,
+            ),
+            "data": lambda: DataPage(
+                task_manager=self.task_manager,
+                preferences=self.preferences,
+            ),
+            "programs": lambda: ProgramsPage(
+                task_manager=self.task_manager,
+                preferences=self.preferences,
+            ),
+            "office": lambda: OfficePage(
+                task_manager=self.task_manager,
+                preferences=self.preferences,
+            ),
+            "mail": lambda: MailPage(
+                task_manager=self.task_manager,
+                preferences=self.preferences,
+            ),
+            "iso": lambda: IsoPage(
+                task_manager=self.task_manager,
+                preferences=self.preferences,
+            ),
+            "search": lambda: SearchPage(self.preferences),
         }
+
+        self._shortcuts: list[QShortcut] = []
+        self._add_shortcut("Ctrl+K", self.command_palette.open_for_search)
+        self._add_shortcut("Alt+1", lambda: self._navigate_from_sidebar("dashboard"))
+        self._add_shortcut("Alt+2", lambda: self._navigate_from_sidebar("access"))
+        self._add_shortcut("Alt+3", lambda: self._navigate_from_sidebar("tasks"))
 
         self.toast = ToastNotification(root)
         self.task_manager.notification.connect(self._show_task_notification)
@@ -127,6 +167,7 @@ class MainWindow(QMainWindow):
 
         navigation = (
             ("dashboard", "Sistem Özeti", "dashboard", "GENEL"),
+            ("access", "Hızlı Erişim", "access", None),
             ("tasks", "Görev Merkezi", "tasks", None),
             ("system", "Sistem Yönetimi", "system", None),
             ("network", "Ağ ve İnternet", "network", "ARAÇLAR"),
@@ -155,7 +196,7 @@ class MainWindow(QMainWindow):
             layout.addWidget(button)
 
         layout.addStretch()
-        progress = QLabel("V0.4 PREVIEW • GÖREV MERKEZİ")
+        progress = QLabel("V0.5 PREVIEW • HIZLI ERİŞİM")
         progress.setObjectName("VersionPill")
         progress.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(progress)
@@ -205,10 +246,18 @@ class MainWindow(QMainWindow):
         self.task_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.task_button.clicked.connect(self._open_task_center)
 
+        palette_button = QPushButton("Komutlar  Ctrl+K")
+        palette_button.setObjectName("GhostButton")
+        palette_button.setIcon(monochrome_icon("search"))
+        palette_button.setToolTip("Komut paletini aç (Ctrl+K)")
+        palette_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        palette_button.clicked.connect(self.command_palette.open_for_search)
+
         layout.addWidget(self.context_label)
         layout.addStretch()
         layout.addWidget(self.search, 1)
         layout.addWidget(self.status_label)
+        layout.addWidget(palette_button)
         layout.addWidget(self.task_button)
         layout.addWidget(admin)
         return topbar
@@ -218,6 +267,9 @@ class MainWindow(QMainWindow):
             page = self._page_factories[key]()
             if isinstance(page, (SystemPage, ToolsPage)):
                 page.status_message.connect(self.show_status)
+            if isinstance(page, QuickAccessPage):
+                page.status_message.connect(self.show_status)
+                page.action_requested.connect(self._run_search_result)
             if isinstance(page, SearchPage):
                 page.action_requested.connect(self._run_search_result)
             self._pages[key] = page
@@ -233,6 +285,7 @@ class MainWindow(QMainWindow):
 
         titles = {
             "dashboard": "Sistem Özeti",
+            "access": "Hızlı Erişim",
             "tasks": "Görev Merkezi",
             "system": "Sistem Yönetimi",
             "network": "Ağ ve İnternet",
@@ -245,6 +298,15 @@ class MainWindow(QMainWindow):
             "search": "Araç Arama",
         }
         self.context_label.setText(titles[key])
+
+    def _add_shortcut(
+        self,
+        sequence: str,
+        callback: Callable[[], None],
+    ) -> None:
+        shortcut = QShortcut(QKeySequence(sequence), self)
+        shortcut.activated.connect(callback)
+        self._shortcuts.append(shortcut)
 
     def _on_search(self, query: str) -> None:
         if query.strip():

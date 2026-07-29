@@ -13,6 +13,7 @@ from app_v2.registry import (
     PackageItem,
     ToolAction,
 )
+from app_v2.services.preferences import ToolPreferences
 from app_v2.services.task_manager import TaskManager
 
 
@@ -21,6 +22,7 @@ class ProgramsPage(ToolsPage):
         self,
         parent: QWidget | None = None,
         task_manager: TaskManager | None = None,
+        preferences: ToolPreferences | None = None,
     ) -> None:
         super().__init__(
             "Program Kurulumu",
@@ -32,6 +34,7 @@ class ProgramsPage(ToolsPage):
             },
             parent=parent,
             task_manager=task_manager,
+            preferences=preferences,
         )
 
     def _open_basic_installer(self, action: ToolAction) -> None:

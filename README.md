@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img alt="Sürüm" src="https://img.shields.io/badge/sürüm-v0.4.0--preview.1-4C8DFF">
+  <img alt="Sürüm" src="https://img.shields.io/badge/sürüm-v0.5.0--preview.1-4C8DFF">
   <img alt="Platform" src="https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-5CD6FF">
   <img alt="Python" src="https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white">
   <img alt="PySide6" src="https://img.shields.io/badge/arayüz-PySide6-41CD52?logo=qt&logoColor=white">
@@ -27,7 +27,7 @@
   <a href="SECURITY.md">Güvenlik</a>
 </p>
 
-![IT Toolkit Görev Merkezi](docs/images/task-center-v0.4.png)
+![IT Toolkit Hızlı Erişim](docs/images/quick-access-v0.5.png)
 
 ## Nedir?
 
@@ -46,6 +46,9 @@ bu sürümün parçası değildir.
 - Dokuz araç modülü altında 64 işlem ve merkezi Görev Merkezi
 - 32 yazılım için resmi `winget` veya üretici kaynağı
 - Global araç arama ve bağlama göre gruplandırılmış işlemler
+- Favoriler, kişisel sıralama ve son kullanılan araçlar
+- `Ctrl+K` komut paleti ve hızlı gezinme kısayolları
+- Temel kontrol, ağ onarımı ve teslim özeti hazır akışları
 - Canlı CPU, RAM, disk, işletim sistemi ve donanım özeti
 - Uzun işlemlerde arayüzü kilitlemeyen arka plan yürütme altyapısı
 - Canlı görev çıktısı, ilerleme, iptal ve son 100 işlemlik yerel geçmiş
@@ -58,6 +61,7 @@ bu sürümün parçası değildir.
 | Modül | İçerik |
 | --- | --- |
 | Sistem Özeti | CPU, RAM, disk, donanım, işletim sistemi ve çalışma süresi |
+| Hızlı Erişim | Favoriler, son kullanılanlar ve teknisyen hazır akışları |
 | Görev Merkezi | Canlı çıktı, ilerleme, iptal, sonuç geçmişi ve rapor dışa aktarma |
 | Sistem Yönetimi | Temizlik, onarım, yazıcı, önbellek, SMART ve geri yükleme araçları |
 | Ağ ve İnternet | IP/DNS sıfırlama, bağlantı analizi, Wi-Fi QR ve ağ yardımcıları |
@@ -73,10 +77,11 @@ bu sürümün parçası değildir.
 ```text
 main_v2.py
 └── app_v2/
-    ├── main_window.py       # Ana pencere, menü ve global arama
+    ├── main_window.py       # Ana pencere, menü ve klavye kısayolları
+    ├── command_palette.py   # Ctrl+K araç arama ve çalıştırma paleti
     ├── pages/               # Modül ekranları
     │   └── tasks.py         # Görev Merkezi ve canlı çıktı arayüzü
-    ├── services/            # Komut, ayar ve sistem izleme servisleri
+    ├── services/            # Komut, tercih, ayar ve sistem izleme servisleri
     │   └── task_manager.py  # Süreç, iptal ve kalıcı geçmiş yönetimi
     ├── registry.py          # Araç ve paket tanımları
     ├── widgets.py           # Ortak arayüz bileşenleri

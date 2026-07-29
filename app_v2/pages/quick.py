@@ -4,6 +4,7 @@ from PySide6.QtWidgets import QInputDialog, QWidget
 
 from app_v2.pages.tools_page import ToolsPage
 from app_v2.registry import QUICK_ACTIONS, ToolAction
+from app_v2.services.preferences import ToolPreferences
 from app_v2.services.task_manager import TaskManager
 
 
@@ -12,6 +13,7 @@ class QuickPage(ToolsPage):
         self,
         parent: QWidget | None = None,
         task_manager: TaskManager | None = None,
+        preferences: ToolPreferences | None = None,
     ) -> None:
         super().__init__(
             "Hızlı Başlat",
@@ -20,6 +22,7 @@ class QuickPage(ToolsPage):
             custom_handlers={"shutdown_schedule": self._schedule_shutdown},
             parent=parent,
             task_manager=task_manager,
+            preferences=preferences,
         )
 
     def _schedule_shutdown(self, action: ToolAction) -> None:

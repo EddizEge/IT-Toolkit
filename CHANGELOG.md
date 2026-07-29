@@ -7,7 +7,34 @@ izler ve proje [SemVer](https://semver.org/) kullanır.
 
 ### Planlanan
 
-- Favoriler ve komut paleti
+- Açıklanabilir sistem sağlık puanı ve tanılama özeti
+- Güvenli geri alma ve otomatik geri yükleme noktası akışları
+
+## [0.5.0-preview.1] - 2026-07-29
+
+### Eklendi
+
+- Favorileri, son kullanılanları ve hazır akışları birleştiren Hızlı Erişim sayfası
+- Bütün 64 araç kartında favoriye ekleme ve kaldırma düğmesi
+- Favorileri yukarı/aşağı taşıyarak kişisel sıralama
+- En son kullanılan 12 aracı cihazda saklayan yerel geçmiş
+- Başlık, kategori ve açıklamada arama yapan `Ctrl+K` komut paleti
+- Favorileri arama sonuçlarında öne çıkaran komut sıralaması
+- `Alt+1` Sistem Özeti, `Alt+2` Hızlı Erişim ve `Alt+3` Görev Merkezi kısayolları
+- Temel sistem kontrolü, ağ onarımı ve teslim öncesi cihaz özeti hazır akışları
+- Tercih, komut sıralaması ve hazır akışlar için 10 yeni otomatik test
+
+### Değiştirildi
+
+- Sol menü yeni Hızlı Erişim modülü için daha kompakt hâle getirildi
+- Üst çubuğa komut paleti düğmesi ve kısayol ipucu eklendi
+- Araç çalıştırma geçmişi bütün modüllerde ortak tercih servisine bağlandı
+
+### Güvenlik
+
+- Tercihler yalnızca `%LOCALAPPDATA%\IT Toolkit\preferences.json` içinde tutuluyor
+- Tanınmayan, yinelenen veya bozuk tercih kayıtları yükleme sırasında yok sayılıyor
+- Ağ onarımı hazır akışı yönetici yetkisi ve kullanıcı onayı gerektiriyor
 
 ## [0.4.0-preview.1] - 2026-07-29
 
@@ -64,6 +91,7 @@ izler ve proje [SemVer](https://semver.org/) kullanır.
   çıkarıldı
 - Güvenilir olmayan indirme bağlantıları kaldırıldı
 
-[Yayınlanmadı]: https://github.com/EddizEge/IT-Toolkit/compare/v0.4.0-preview.1...HEAD
+[Yayınlanmadı]: https://github.com/EddizEge/IT-Toolkit/compare/v0.5.0-preview.1...HEAD
+[0.5.0-preview.1]: https://github.com/EddizEge/IT-Toolkit/compare/v0.4.0-preview.1...v0.5.0-preview.1
 [0.4.0-preview.1]: https://github.com/EddizEge/IT-Toolkit/compare/v0.3.0-preview.1...v0.4.0-preview.1
 [0.3.0-preview.1]: https://github.com/EddizEge/IT-Toolkit/releases/tag/v0.3.0-preview.1
