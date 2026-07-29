@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
 )
 
 from app_v2.registry import ToggleAction, ToolAction
+from app_v2.services.preferences import ToolPreferences
 
 
 def clear_layout(layout: QVBoxLayout) -> None:
@@ -158,9 +159,15 @@ class InfoRow(QWidget):
 class ActionTile(QFrame):
     run_requested = Signal(object)
 
-    def __init__(self, action: ToolAction, parent: QWidget | None = None) -> None:
+    def __init__(
+        self,
+        action: ToolAction,
+        preferences: ToolPreferences | None = None,
+        parent: QWidget | None = None,
+    ) -> None:
         super().__init__(parent)
         self.action = action
+        self.preferences = preferences
         self.setObjectName("ActionTile")
         self.setMinimumHeight(142)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
@@ -174,6 +181,16 @@ class ActionTile(QFrame):
         title.setObjectName("SectionTitle")
         title.setWordWrap(True)
         title_row.addWidget(title, 1)
+
+        if preferences:
+            self.favorite_button = QPushButton()
+            self.favorite_button.setObjectName("FavoriteButton")
+            self.favorite_button.setFixedSize(32, 32)
+            self.favorite_button.setCursor(Qt.CursorShape.PointingHandCursor)
+            self.favorite_button.clicked.connect(self._toggle_favorite)
+            title_row.addWidget(self.favorite_button)
+            preferences.favorites_changed.connect(self._sync_favorite)
+            self._sync_favorite()
 
         if action.admin:
             badge = QLabel("YÖNETİCİ")
@@ -198,6 +215,22 @@ class ActionTile(QFrame):
         layout.addLayout(title_row)
         layout.addWidget(description, 1)
         layout.addLayout(action_row)
+
+    def _toggle_favorite(self) -> None:
+        if self.preferences:
+            self.preferences.toggle_favorite(self.action.key)
+
+    def _sync_favorite(self) -> None:
+        if not self.preferences:
+            return
+        selected = self.preferences.is_favorite(self.action.key)
+        self.favorite_button.setText("★" if selected else "☆")
+        self.favorite_button.setToolTip(
+            "Favorilerden kaldır" if selected else "Hızlı Erişim'e ekle"
+        )
+        self.favorite_button.setProperty("selected", selected)
+        self.favorite_button.style().unpolish(self.favorite_button)
+        self.favorite_button.style().polish(self.favorite_button)
 
 
 class ToggleRow(QFrame):

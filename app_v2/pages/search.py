@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
 )
 
 from app_v2.registry import PAGE_ACTIONS, ToolAction
+from app_v2.services.preferences import ToolPreferences
 from app_v2.widgets import ActionTile
 
 
@@ -30,8 +31,13 @@ class SearchPage(QWidget):
         "iso": "Windows ISO / USB",
     }
 
-    def __init__(self, parent: QWidget | None = None) -> None:
+    def __init__(
+        self,
+        preferences: ToolPreferences | None = None,
+        parent: QWidget | None = None,
+    ) -> None:
         super().__init__(parent)
+        self.preferences = preferences
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
         scroll = QScrollArea()
@@ -91,7 +97,7 @@ class SearchPage(QWidget):
             )
 
         for index, (page_key, action) in enumerate(results):
-            tile = ActionTile(action)
+            tile = ActionTile(action, self.preferences)
             tile.setToolTip(f"Modül: {self.PAGE_NAMES[page_key]}")
             tile.run_requested.connect(
                 lambda selected, key=page_key: self.action_requested.emit(key, selected)

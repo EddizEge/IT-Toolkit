@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
 )
 
 from app_v2.registry import ToggleAction, ToolAction
+from app_v2.services.preferences import ToolPreferences
 from app_v2.services.settings_service import get_toggle_status
 from app_v2.services.task_manager import TaskManager
 from app_v2.widgets import ActionTile, ToggleRow
@@ -33,11 +34,13 @@ class ToolsPage(QWidget):
         custom_handlers: dict[str, Callable[[ToolAction], None]] | None = None,
         parent: QWidget | None = None,
         task_manager: TaskManager | None = None,
+        preferences: ToolPreferences | None = None,
     ) -> None:
         super().__init__(parent)
         self.actions = actions
         self.page_title = title
         self.task_manager = task_manager or TaskManager(self)
+        self.preferences = preferences
         self._handlers = custom_handlers or {}
         self._tiles: list[ActionTile] = []
         self._sections: list[tuple[QWidget, list[ActionTile]]] = []
@@ -86,7 +89,7 @@ class ToolsPage(QWidget):
             grid.setColumnStretch(1, 1)
             section_tiles: list[ActionTile] = []
             for index, action in enumerate(category_actions):
-                tile = ActionTile(action)
+                tile = ActionTile(action, self.preferences)
                 tile.run_requested.connect(self.execute_action)
                 self._tiles.append(tile)
                 section_tiles.append(tile)
@@ -159,6 +162,8 @@ class ToolsPage(QWidget):
     def execute_action(self, action: ToolAction) -> None:
         if not self._confirm_action(action):
             return
+        if self.preferences:
+            self.preferences.record_recent(action.key)
         if action.handler:
             handler = self._handlers.get(action.handler)
             if not handler:

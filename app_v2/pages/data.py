@@ -7,6 +7,7 @@ from PySide6.QtWidgets import QFileDialog, QWidget
 
 from app_v2.pages.tools_page import ToolsPage
 from app_v2.registry import DATA_ACTIONS, DATA_TOGGLES, ToolAction
+from app_v2.services.preferences import ToolPreferences
 from app_v2.services.task_manager import TaskManager
 
 
@@ -15,6 +16,7 @@ class DataPage(ToolsPage):
         self,
         parent: QWidget | None = None,
         task_manager: TaskManager | None = None,
+        preferences: ToolPreferences | None = None,
     ) -> None:
         super().__init__(
             "Veri Taşıma ve Yedekleme",
@@ -28,6 +30,7 @@ class DataPage(ToolsPage):
             },
             parent=parent,
             task_manager=task_manager,
+            preferences=preferences,
         )
 
     def _backup_profile(self, action: ToolAction) -> None:

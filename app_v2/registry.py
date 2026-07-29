@@ -410,3 +410,13 @@ PAGE_ACTIONS = {
     "mail": MAIL_ACTIONS,
     "iso": ISO_ACTIONS,
 }
+
+ACTION_LOOKUP = {
+    action.key: (page_key, action)
+    for page_key, actions in PAGE_ACTIONS.items()
+    for action in actions
+}
+
+
+def find_action(action_key: str) -> tuple[str, ToolAction] | None:
+    return ACTION_LOOKUP.get(action_key)

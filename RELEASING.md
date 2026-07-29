@@ -4,7 +4,7 @@
 
 Etiketler SemVer ön ekiyle oluşturulur:
 
-- Ön izleme: `v0.4.0-preview.1`
+- Ön izleme: `v0.5.0-preview.1`
 - Beta: `v0.6.0-beta.1`
 - Sürüm adayı: `v0.9.0-rc.1`
 - Kararlı: `v1.0.0`
@@ -25,8 +25,8 @@ Etiketler SemVer ön ekiyle oluşturulur:
 ## Yerel komutlar
 
 ```powershell
-git tag -a v0.4.0-preview.1 -m "IT Toolkit v0.4.0-preview.1"
-git push origin v0.4.0-preview.1
+git tag -a v0.5.0-preview.1 -m "IT Toolkit v0.5.0-preview.1"
+git push origin v0.5.0-preview.1
 ```
 
 Ardından GitHub üzerinde bu etiketten bir Release oluşturun. Release

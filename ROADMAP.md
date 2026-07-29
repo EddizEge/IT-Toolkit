@@ -27,7 +27,7 @@ geri bildirimi öncelik sırasını değiştirebilir.
 
 ## v0.4.0-preview.1 — Görev Merkezi
 
-**Durum:** Mevcut yayın
+**Durum:** Tamamlandı — 29 Temmuz 2026
 
 **Hedef:** İşlemleri görünür, izlenebilir ve kontrol edilebilir hâle getirmek.
 
@@ -43,19 +43,23 @@ geri bildirimi öncelik sırasını değiştirebilir.
 **Çıkış ölçütü:** Tamamlandı. Görevler arayüzü kilitlemeden çalışıyor; canlı
 çıktı, sonuç ve hata bilgisi tek merkezden görülebiliyor.
 
-## v0.5.0-preview — Hızlı erişim
+## v0.5.0-preview.1 — Hızlı erişim
+
+**Durum:** Mevcut yayın
 
 **Hedef:** Günlük teknisyen işlerini daha az tıklamayla tamamlamak.
 
-- Favori araçlar
-- Son kullanılanlar
-- `Ctrl+K` komut paleti
-- Araç sabitleme ve kişisel sıralama
-- Hazır bakım paketleri: “Temel kontrol”, “Ağ onarımı”, “Teslim öncesi”
-- Klavye ile tam gezinme
+- [x] Favori araçlar
+- [x] Son kullanılanlar
+- [x] `Ctrl+K` komut paleti
+- [x] Araç sabitleme ve kişisel sıralama
+- [x] Hazır bakım akışları: “Temel kontrol”, “Ağ onarımı”, “Teslim öncesi”
+- [x] `Alt+1`, `Alt+2` ve `Alt+3` hızlı gezinme kısayolları
+- [x] Bozuk veya eski tercih kayıtlarını güvenle temizleyen yerel tercih servisi
+- [x] Favori, geçmiş, arama sıralaması ve hazır akış testleri
 
-**Çıkış ölçütü:** Sık kullanılan bir araç klavyeyle veya en fazla iki tıklamayla
-başlatılabilmeli.
+**Çıkış ölçütü:** Tamamlandı. Sık kullanılan bir araç `Ctrl+K` ile klavyeden
+veya Hızlı Erişim sayfasından en fazla iki tıklamayla başlatılabiliyor.
 
 ## v0.6.0-beta — Akıllı tanılama
 

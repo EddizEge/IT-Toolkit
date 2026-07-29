@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
 )
 
 from app_v2.registry import SYSTEM_ACTIONS, SYSTEM_TOGGLES, ToggleAction, ToolAction
+from app_v2.services.preferences import ToolPreferences
 from app_v2.services.settings_service import get_toggle_status
 from app_v2.services.task_manager import TaskManager
 from app_v2.widgets import ActionTile, ToggleRow
@@ -26,9 +27,11 @@ class SystemPage(QWidget):
         self,
         parent: QWidget | None = None,
         task_manager: TaskManager | None = None,
+        preferences: ToolPreferences | None = None,
     ) -> None:
         super().__init__(parent)
         self.task_manager = task_manager or TaskManager(self)
+        self.preferences = preferences
         self._tiles: list[ActionTile] = []
         self._toggle_rows: dict[str, ToggleRow] = {}
 
@@ -69,7 +72,7 @@ class SystemPage(QWidget):
             grid.setColumnStretch(0, 1)
             grid.setColumnStretch(1, 1)
             for index, action in enumerate(actions):
-                tile = ActionTile(action)
+                tile = ActionTile(action, self.preferences)
                 tile.run_requested.connect(self.execute_action)
                 self._tiles.append(tile)
                 grid.addWidget(tile, index // 2, index % 2)
@@ -116,6 +119,8 @@ class SystemPage(QWidget):
             if box.exec() != QMessageBox.StandardButton.Yes:
                 return
 
+        if self.preferences:
+            self.preferences.record_recent(action.key)
         task = self.task_manager.start_action(action)
         ok = task.status not in {"failed", "cancelled", "interrupted"}
         message = (

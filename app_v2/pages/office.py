@@ -7,6 +7,7 @@ from PySide6.QtWidgets import QDialog, QWidget
 from app_v2.dialogs import InstallerDialog
 from app_v2.pages.tools_page import ToolsPage
 from app_v2.registry import OFFICE_ACTIONS, OFFICE_PACKAGES, ToolAction
+from app_v2.services.preferences import ToolPreferences
 from app_v2.services.task_manager import TaskManager
 
 
@@ -15,6 +16,7 @@ class OfficePage(ToolsPage):
         self,
         parent: QWidget | None = None,
         task_manager: TaskManager | None = None,
+        preferences: ToolPreferences | None = None,
     ) -> None:
         super().__init__(
             "Microsoft Office",
@@ -23,6 +25,7 @@ class OfficePage(ToolsPage):
             custom_handlers={"office_installer": self._open_installer},
             parent=parent,
             task_manager=task_manager,
+            preferences=preferences,
         )
 
     def _open_installer(self, action: ToolAction) -> None:
