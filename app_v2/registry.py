@@ -2,6 +2,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from app_v2.services.command_builder import (
+    aggregate_sequence,
+    powershell_command,
+)
+
 
 @dataclass(frozen=True)
 class ToolAction:
@@ -91,7 +96,10 @@ SYSTEM_ACTIONS = (
         "Disk sağlık durumunu görüntüle",
         "Fiziksel disklerin model ve sağlık durumlarını PowerShell üzerinden listeler.",
         "Analiz ve Gelişmiş İşlemler",
-        r'powershell -NoProfile -Command "Get-PhysicalDisk | Select-Object FriendlyName, MediaType, HealthStatus, OperationalStatus, Size | Format-Table -AutoSize"',
+        powershell_command(
+            "Get-PhysicalDisk | Select-Object FriendlyName, MediaType, "
+            "HealthStatus, OperationalStatus, Size | Format-Table -AutoSize"
+        ),
     ),
     ToolAction(
         "battery",
@@ -154,7 +162,14 @@ NETWORK_ACTIONS = (
         "İnternet bağlantısını sıfırla",
         "IP kiralamasını, DNS önbelleğini ve Winsock kataloğunu yeniler.",
         "Temel Ağ İşlemleri",
-        "ipconfig /release & ipconfig /renew & ipconfig /flushdns & netsh winsock reset",
+        aggregate_sequence(
+            (
+                "ipconfig /release",
+                "ipconfig /renew",
+                "ipconfig /flushdns",
+                "netsh winsock reset",
+            )
+        ),
         admin=True,
         risk="caution",
     ),
@@ -171,7 +186,6 @@ NETWORK_ACTIONS = (
         "Cihazda bağlantı bekleyen TCP ve UDP portlarını işlem kimlikleriyle listeler.",
         "Temel Ağ İşlemleri",
         "netstat -ano | findstr LISTENING",
-        admin=True,
     ),
     ToolAction(
         "ping",
@@ -185,7 +199,34 @@ NETWORK_ACTIONS = (
         "Yerel ağı tara",
         "Mevcut IPv4 alt ağındaki yanıt veren cihazları tarar ve listeler.",
         "Temel Ağ İşlemleri",
-        r"""powershell -NoProfile -Command "$ip=(Get-NetIPAddress -AddressFamily IPv4|Where-Object {$_.IPAddress -notlike '169.254*' -and $_.IPAddress -notlike '127.*'}|Select-Object -First 1 -ExpandProperty IPAddress);if(-not $ip){Write-Host 'Etkin IPv4 adresi bulunamadı';exit 1};$base=$ip.Substring(0,$ip.LastIndexOf('.'));1..254|ForEach-Object{$target=$base+'.'+$_;if(Test-Connection $target -Count 1 -Quiet -TimeoutSeconds 1){Write-Host ('AKTİF: '+$target) -ForegroundColor Green}}""",
+        powershell_command(
+            "$ip=(Get-NetIPAddress -AddressFamily IPv4 | "
+            "Where-Object {$_.IPAddress -notlike '169.254*' -and "
+            "$_.IPAddress -notlike '127.*'} | "
+            "Select-Object -First 1 -ExpandProperty IPAddress);"
+            "if(-not $ip){Write-Output 'Etkin IPv4 adresi bulunamadı';exit 1};"
+            "$base=$ip.Substring(0,$ip.LastIndexOf('.'));"
+            "$probes=@(1..254 | ForEach-Object {"
+            "$target=$base+'.'+$_;"
+            "try{"
+            "$ping=New-Object System.Net.NetworkInformation.Ping;"
+            "$task=$ping.SendPingAsync($target,750);"
+            "[PSCustomObject]@{Target=$target;Ping=$ping;Task=$task}"
+            "}catch{}"
+            "});"
+            "$tasks=@($probes | ForEach-Object {$_.Task});"
+            "if($tasks.Count){"
+            "[System.Threading.Tasks.Task]::WaitAll("
+            "[System.Threading.Tasks.Task[]]$tasks)"
+            "};"
+            "$probes | ForEach-Object {"
+            "try{"
+            "if($_.Task.Result.Status -eq 'Success'){"
+            "Write-Output ('AKTİF: '+$_.Target)"
+            "}"
+            "}finally{$_.Ping.Dispose()}"
+            "}"
+        ),
     ),
     ToolAction(
         "wifi_profiles",
@@ -253,7 +294,22 @@ QUICK_ACTIONS = (
     ToolAction("programs_features", "Programlar ve Özellikler", "Klasik program kaldırma menüsünü açar.", "Windows Yönetim Konsolları", "start appwiz.cpl", keep_open=False),
     ToolAction("control_panel", "Denetim Masası", "Klasik Windows Denetim Masasını açar.", "Windows Yönetim Konsolları", "start control", keep_open=False),
     ToolAction("uac_settings", "UAC bildirim ayarlarını aç", "Yönetici izni bildirim düzeyini Windows arayüzünden değiştirmenizi sağlar.", "Windows Yönetim Konsolları", "UserAccountControlSettings.exe", keep_open=False),
-    ToolAction("minidump", "Mavi ekran günlüklerini aç", "Windows Minidump klasörünü Dosya Gezgini'nde açar.", "Tanılama ve Kurtarma", r'start "" explorer.exe C:\Windows\Minidump', keep_open=False),
+    ToolAction(
+        "minidump",
+        "Mavi ekran günlüklerini aç",
+        "Windows Minidump klasörünü denetler ve varsa Dosya Gezgini'nde açar.",
+        "Tanılama ve Kurtarma",
+        powershell_command(
+            "$path=Join-Path $env:WINDIR 'Minidump';"
+            "if(Test-Path -LiteralPath $path){"
+            "Start-Process explorer.exe -ArgumentList $path;"
+            "Write-Output ('Klasör açıldı: '+$path)"
+            "}else{"
+            "Write-Output 'Henüz bir mavi ekran minidump kaydı bulunmuyor.'"
+            "}"
+        ),
+        keep_open=False,
+    ),
     ToolAction("windbg", "WinDbg aracını kur", "Microsoft'un resmi hata ayıklama aracını Winget ile kurar.", "Tanılama ve Kurtarma", "winget install --id Microsoft.WinDbg -e --accept-package-agreements --accept-source-agreements", admin=True),
     ToolAction("task_manager_unlock", "Görev Yöneticisi engelini kaldır", "DisableTaskMgr ilke değerini kaldırır.", "Tanılama ve Kurtarma", r'reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\System" /v DisableTaskMgr /f', admin=True, risk="caution"),
     ToolAction("kill_hung", "Yanıt vermeyen uygulamaları kapat", "Yanıt vermiyor durumundaki uygulamaları zorla sonlandırır.", "Tanılama ve Kurtarma", r'taskkill /f /fi "status eq not responding"', admin=True, risk="danger"),
@@ -268,7 +324,20 @@ DATA_ACTIONS = (
     ToolAction("profile_backup", "Kullanıcı profilini yedekle", "Masaüstü, Belgeler, İndirilenler ve Resimler klasörlerini seçtiğiniz hedefe kopyalar.", "Dosya ve Profil Transferi", "", handler="profile_backup"),
     ToolAction("credential_backup", "Windows kimlik bilgilerini yedekle", "Windows'un yerleşik Kimlik Bilgisi Yedekleme sihirbazını açar.", "Dosya ve Profil Transferi", "start credwiz.exe", keep_open=False),
     ToolAction("take_ownership", "Klasör sahipliğini al", "Seçilen klasörün sahipliğini yerel yöneticiler grubuna verir.", "Dosya ve Profil Transferi", "", admin=True, risk="danger", handler="take_ownership"),
-    ToolAction("inventory", "PC envanter raporu oluştur", "Sistem bilgileri ve yüklü uygulama listesini Masaüstündeki metin raporuna yazar.", "Dosya ve Profil Transferi", r'systeminfo > "%USERPROFILE%\Desktop\PC_Rapor.txt" & winget list >> "%USERPROFILE%\Desktop\PC_Rapor.txt" & start "" notepad.exe "%USERPROFILE%\Desktop\PC_Rapor.txt"', keep_open=False),
+    ToolAction(
+        "inventory",
+        "PC envanter raporu oluştur",
+        "Sistem bilgileri ve yüklü uygulama listesini Masaüstündeki metin raporuna yazar.",
+        "Dosya ve Profil Transferi",
+        aggregate_sequence(
+            (
+                r'systeminfo > "%USERPROFILE%\Desktop\PC_Rapor.txt"',
+                r'winget list >> "%USERPROFILE%\Desktop\PC_Rapor.txt"',
+                r'start "" notepad.exe "%USERPROFILE%\Desktop\PC_Rapor.txt"',
+            )
+        ),
+        keep_open=False,
+    ),
     ToolAction("aomei", "AOMEI Backupper Standard kur", "Resmi Winget paketinden disk yedekleme ve klonlama aracını kurar.", "Disk ve Yedekleme", "winget install --id AOMEI.Backupper.Standard -e --accept-package-agreements --accept-source-agreements", admin=True),
     ToolAction("wipe_free_space", "Boş disk alanını güvenli temizle", "Seçilen sürücünün yalnızca boş alanını üzerine yazarak eski silinmiş verilerin kurtarılmasını zorlaştırır.", "Disk ve Yedekleme", "", admin=True, risk="danger", handler="wipe_free_space"),
 )
@@ -290,10 +359,28 @@ PROGRAM_ACTIONS = (
     ToolAction("driver_installer", "Sürücü ve üretici araçlarını seç", "Resmi sürücü uygulamalarını ve üretici destek sayfalarını listeler.", "Otomatik Kurulum", "", handler="driver_installer"),
     ToolAction(
         "debloat",
-        "Seçili gereksiz uygulamaları kaldır",
-        "McAfee, TikTok ve Candy Crush paketlerini varsa Winget üzerinden kaldırır.",
+        "Seçili gereksiz Store uygulamalarını kaldır",
+        "TikTok, Candy Crush ve McAfee Store paketlerini bulursa kaldırır; diğer uygulamalara dokunmaz.",
         "Sistem Temizliği",
-        "winget uninstall -e --id McAfee.McAfeeSecurity --silent & winget uninstall -e --id ByteDance.TikTok --silent & winget uninstall -e --id King.CandyCrushSaga --silent",
+        powershell_command(
+            "$pattern='TikTok|CandyCrush|McAfee';"
+            "$packages=Get-AppxPackage -AllUsers | "
+            "Where-Object {$_.Name -match $pattern};"
+            "if(-not $packages){"
+            "Write-Output 'Hedeflenen Store uygulamalarından hiçbiri yüklü değil.';"
+            "exit 0};"
+            "$failed=$false;"
+            "foreach($package in $packages){"
+            "try{"
+            "Remove-AppxPackage -Package $package.PackageFullName "
+            "-AllUsers -ErrorAction Stop;"
+            "Write-Output ('Kaldırıldı: '+$package.Name)"
+            "}catch{"
+            "$failed=$true;"
+            "Write-Error ('Kaldırılamadı: '+$package.Name+' - '+$_.Exception.Message)"
+            "}};"
+            "if($failed){exit 1}"
+        ),
         admin=True,
         risk="danger",
     ),
@@ -312,7 +399,19 @@ OFFICE_ACTIONS = (
         "Office lisans durumunu görüntüle",
         "Yüklü Office sürümünün OSPP lisans ayrıntılarını yerel olarak gösterir.",
         "Tanılama",
-        r"""powershell -NoProfile -Command "$roots=@($env:ProgramFiles,${env:ProgramFiles(x86)})|Where-Object {$_};$p=Get-ChildItem $roots -Filter OSPP.VBS -Recurse -ErrorAction SilentlyContinue|Select-Object -First 1;if($p){cscript.exe //nologo $p.FullName /dstatus}else{Write-Host 'OSPP.VBS bulunamadı';exit 1}""",
+        powershell_command(
+            "$roots=@($env:ProgramFiles,${env:ProgramFiles(x86)}) | "
+            "Where-Object {$_};"
+            "$path=Get-ChildItem $roots -Filter OSPP.VBS -Recurse "
+            "-ErrorAction SilentlyContinue | Select-Object -First 1;"
+            "if($path){"
+            "cscript.exe //nologo $path.FullName /dstatus;"
+            "exit $LASTEXITCODE"
+            "}else{"
+            "Write-Output 'OSPP.VBS bulunamadı';"
+            "exit 1"
+            "}"
+        ),
     ),
 )
 
@@ -322,7 +421,14 @@ MAIL_ACTIONS = (
     ToolAction("outlook_safe", "Outlook'u Güvenli Modda başlat", "Outlook'u eklentiler kapalı olarak açar.", "Sorun Giderme", "start outlook.exe /safe", keep_open=False),
     ToolAction("outlook_cache", "Otomatik tamamlama önbelleğini temizle", "Outlook'un alıcı önerileri önbelleğini temizleyerek uygulamayı başlatır.", "Sorun Giderme", "start outlook.exe /cleanautocompletecache", keep_open=False, risk="caution"),
     ToolAction("pst_backup", "PST ve OST dosyalarını yedekle", "Klasik Outlook veri dosyalarını seçtiğiniz hedef klasöre kopyalar.", "Yedekleme ve Arşivleme", "", handler="pst_backup"),
-    ToolAction("mailstore", "MailStore Home kur", "Ücretsiz e-posta arşivleme aracını resmi Winget paketinden kurar.", "Yedekleme ve Arşivleme", "winget install -e --id MailStore.MailStoreHome --accept-package-agreements --accept-source-agreements", admin=True),
+    ToolAction(
+        "mailstore",
+        "MailStore Home indirme sayfası",
+        "Ücretsiz ev sürümünün resmi indirme sayfasını tarayıcıda açar.",
+        "Yedekleme ve Arşivleme",
+        'start "" "https://www.mailstore.com/en/products/mailstore-home/"',
+        keep_open=False,
+    ),
     ToolAction("outlook_support", "Microsoft Outlook desteğini aç", "Resmi Microsoft Outlook yardım ve sorun giderme sayfasını açar.", "Yedekleme ve Arşivleme", 'start "" "https://support.microsoft.com/outlook"', keep_open=False),
 )
 
@@ -344,27 +450,31 @@ BASIC_PACKAGES = (
     PackageItem("WinRAR", "RARLab.WinRAR"),
     PackageItem("VLC Media Player", "VideoLAN.VLC", True),
     PackageItem("Adobe Acrobat Reader", "Adobe.Acrobat.Reader.64-bit", True),
-    PackageItem("AnyDesk", "AnyDeskSoftwareGmbH.AnyDesk", True),
+    PackageItem("AnyDesk", "AnyDesk.AnyDesk", True),
     PackageItem("TeamViewer", "TeamViewer.TeamViewer"),
-    PackageItem("RustDesk", "RustDesk.RustDesk"),
+    PackageItem("RustDesk resmi indirme sayfası", "https://rustdesk.com/", source="url"),
     PackageItem("Notepad++", "Notepad++.Notepad++", True),
     PackageItem("WinDirStat", "WinDirStat.WinDirStat", True),
     PackageItem("Everything", "voidtools.Everything"),
     PackageItem("TeraCopy", "CodeSector.TeraCopy"),
     PackageItem("PuTTY", "PuTTY.PuTTY"),
-    PackageItem("FileZilla", "TimKosse.FileZillaClient"),
+    PackageItem(
+        "FileZilla resmi indirme sayfası",
+        "https://filezilla-project.org/download.php?type=client",
+        source="url",
+    ),
     PackageItem("Zoom", "Zoom.Zoom"),
     PackageItem("Microsoft Teams", "Microsoft.Teams"),
     PackageItem("Mozilla Thunderbird", "Mozilla.Thunderbird"),
-    PackageItem("Google Drive", "Google.Drive"),
+    PackageItem("Google Drive", "Google.GoogleDrive"),
     PackageItem("Dropbox", "Dropbox.Dropbox"),
     PackageItem("Steam", "Valve.Steam"),
 )
 
 
 DRIVER_PACKAGES = (
-    PackageItem("NVIDIA App", "Nvidia.NVIDIAapp"),
-    PackageItem("HP Smart", "9WZDNCRFHWL0"),
+    PackageItem("NVIDIA App", "XP8CLZL93F5Z4P"),
+    PackageItem("HP Smart", "9WZDNCRFHWLH"),
     PackageItem("Canon destek sayfası", "https://www.canon-europe.com/support/", source="url"),
     PackageItem("HP sürücü destek sayfası", "https://support.hp.com/drivers", source="url"),
     PackageItem("Epson destek sayfası", "https://www.epson.eu/support", source="url"),

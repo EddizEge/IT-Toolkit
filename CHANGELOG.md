@@ -10,6 +10,37 @@ izler ve proje [SemVer](https://semver.org/) kullanır.
 - Açıklanabilir sistem sağlık puanı ve tanılama özeti
 - Güvenli geri alma ve otomatik geri yükleme noktası akışları
 
+## [0.5.1-hotfix.1] - 2026-07-29
+
+### Düzeltildi
+
+- PowerShell komutlarının çalışmak yerine Görev Merkezi’ne düz metin olarak
+  yazılmasına yol açan Windows tırnaklama hatası giderildi
+- Alt ağ taraması ve Office lisans tanılama komutlarının eksik tırnakları,
+  kodlanmış PowerShell komutlarıyla kalıcı olarak düzeltildi
+- Çok adımlı kurulum, profil yedekleme, envanter ve hazır akışlarda önceki bir
+  hatanın sonraki başarılı komut tarafından gizlenmesi önlendi
+- AnyDesk, Google Drive, NVIDIA App ve HP Smart için güncel Winget kimlikleri
+  kullanıldı
+- Winget kataloğunda bulunmayan RustDesk, FileZilla ve MailStore Home,
+  geliştiricilerin resmi indirme sayfalarına yönlendirildi
+- Minidump klasörü bulunmayan cihazlarda geçersiz klasör açmak yerine açıklayıcı
+  sonuç gösteriliyor
+- Dinlenen portlar görevi gereksiz yönetici yetkisi istemeden çalışıyor
+
+### Değiştirildi
+
+- Her görev benzersiz bir geçici komut dosyası üzerinden çalıştırılıyor; görev
+  bittiğinde veya iptal edildiğinde dosya otomatik temizleniyor
+- TikTok, Candy Crush ve McAfee temizliği artık yalnızca eşleşen Microsoft Store
+  paketlerini tespit ederek kaldırıyor
+
+### Kalite
+
+- Gerçek PowerShell yürütme, çok adımlı hata aktarımı, geçici dosya temizliği,
+  paket kimliği ve araç kayıt bütünlüğü testleri eklendi
+- Toplam 23 otomatik test ve güvenli canlı görev denetimi başarıyla tamamlandı
+
 ## [0.5.0-preview.1] - 2026-07-29
 
 ### Eklendi
@@ -91,7 +122,8 @@ izler ve proje [SemVer](https://semver.org/) kullanır.
   çıkarıldı
 - Güvenilir olmayan indirme bağlantıları kaldırıldı
 
-[Yayınlanmadı]: https://github.com/EddizEge/IT-Toolkit/compare/v0.5.0-preview.1...HEAD
+[Yayınlanmadı]: https://github.com/EddizEge/IT-Toolkit/compare/v0.5.1-hotfix.1...HEAD
+[0.5.1-hotfix.1]: https://github.com/EddizEge/IT-Toolkit/compare/v0.5.0-preview.1...v0.5.1-hotfix.1
 [0.5.0-preview.1]: https://github.com/EddizEge/IT-Toolkit/compare/v0.4.0-preview.1...v0.5.0-preview.1
 [0.4.0-preview.1]: https://github.com/EddizEge/IT-Toolkit/compare/v0.3.0-preview.1...v0.4.0-preview.1
 [0.3.0-preview.1]: https://github.com/EddizEge/IT-Toolkit/releases/tag/v0.3.0-preview.1

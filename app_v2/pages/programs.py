@@ -13,6 +13,7 @@ from app_v2.registry import (
     PackageItem,
     ToolAction,
 )
+from app_v2.services.command_builder import fail_fast_sequence
 from app_v2.services.preferences import ToolPreferences
 from app_v2.services.task_manager import TaskManager
 
@@ -72,7 +73,7 @@ class ProgramsPage(ToolsPage):
             QDesktopServices.openUrl(QUrl(url))
 
         if winget_packages:
-            command = " & ".join(
+            command = fail_fast_sequence(
                 "winget install -e "
                 f"--id {item.package_id} "
                 "--accept-package-agreements --accept-source-agreements"

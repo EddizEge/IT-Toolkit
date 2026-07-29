@@ -16,7 +16,9 @@ from PySide6.QtCore import QObject, QProcess, QTimer, Signal
 from app_v2.registry import ToolAction
 from app_v2.services.command_runner import (
     CREATE_NO_WINDOW,
+    create_command_script,
     is_running_as_admin,
+    remove_command_script,
     run_command,
 )
 
@@ -93,11 +95,14 @@ class TaskManager(QObject):
         parent: QObject | None = None,
         *,
         history_path: Path | None = None,
+        script_directory: Path | None = None,
     ) -> None:
         super().__init__(parent)
         self.history_path = history_path or _default_history_path()
+        self.script_directory = script_directory
         self._tasks: list[TaskRecord] = []
         self._processes: dict[str, QProcess] = {}
+        self._script_paths: dict[str, Path] = {}
         self._killers: list[QProcess] = []
         self._success_codes: dict[str, set[int]] = {}
         self._cancel_requested: set[str] = set()
@@ -182,12 +187,24 @@ class TaskManager(QObject):
             return task
 
         self._success_codes[task.id] = set(success_codes)
+        try:
+            script_path = create_command_script(
+                command,
+                directory=self.script_directory,
+            )
+        except OSError as exc:
+            self._success_codes.pop(task.id, None)
+            self._finish_immediately(
+                task,
+                False,
+                f"Görev dosyası oluşturulamadı: {exc}",
+            )
+            return task
+
         process = QProcess(self)
         process.setProcessChannelMode(QProcess.ProcessChannelMode.MergedChannels)
         process.setProgram("cmd.exe")
-        process.setArguments(
-            ["/d", "/s", "/c", f"chcp 65001>nul & {command}"]
-        )
+        process.setArguments(["/d", "/c", os.fspath(script_path)])
         process.started.connect(lambda task_id=task.id: self._on_started(task_id))
         process.readyReadStandardOutput.connect(
             lambda task_id=task.id: self._read_output(task_id)
@@ -202,6 +219,7 @@ class TaskManager(QObject):
                 exit_status,
             )
         )
+        self._script_paths[task.id] = script_path
         self._processes[task.id] = process
         process.start()
         self._save_history()
@@ -477,6 +495,7 @@ class TaskManager(QObject):
         process = self._processes.pop(task_id, None)
         if process:
             process.deleteLater()
+        remove_command_script(self._script_paths.pop(task_id, None))
         self._success_codes.pop(task_id, None)
         self._cancel_requested.discard(task_id)
 

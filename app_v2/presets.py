@@ -2,6 +2,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from app_v2.services.command_builder import (
+    aggregate_sequence,
+    powershell_command,
+)
+
 
 @dataclass(frozen=True)
 class TechnicianPreset:
@@ -18,18 +23,23 @@ TECHNICIAN_PRESETS = (
         "basic_check",
         "Temel sistem kontrolü",
         "Sistem, disk ve ağ bilgilerini tek görevde toplar; sistemde değişiklik yapmaz.",
-        (
-            "systeminfo"
-            ' & powershell -NoProfile -Command "Get-PhysicalDisk | '
-            'Select FriendlyName,MediaType,HealthStatus,Size | Format-Table -AutoSize"'
-            " & ipconfig /all"
+        aggregate_sequence(
+            (
+                "systeminfo",
+                powershell_command(
+                    "Get-PhysicalDisk | Select-Object "
+                    "FriendlyName,MediaType,HealthStatus,Size | "
+                    "Format-Table -AutoSize"
+                ),
+                "ipconfig /all",
+            )
         ),
     ),
     TechnicianPreset(
         "network_repair",
         "Ağ bağlantısını onar",
         "DNS önbelleğini ve Winsock kataloğunu sıfırlar; yeniden başlatma gerekebilir.",
-        "ipconfig /flushdns & netsh winsock reset",
+        aggregate_sequence(("ipconfig /flushdns", "netsh winsock reset")),
         admin=True,
         risk="caution",
     ),
@@ -37,7 +47,7 @@ TECHNICIAN_PRESETS = (
         "delivery_report",
         "Teslim öncesi cihaz özeti",
         "Sistem, kurulu uygulama ve ağ bilgilerini Görev Merkezi'nde raporlar.",
-        "systeminfo & winget list & ipconfig /all",
+        aggregate_sequence(("systeminfo", "winget list", "ipconfig /all")),
     ),
 )
 

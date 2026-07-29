@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img alt="Sürüm" src="https://img.shields.io/badge/sürüm-v0.5.0--preview.1-4C8DFF">
+  <img alt="Sürüm" src="https://img.shields.io/badge/sürüm-v0.5.1--hotfix.1-4C8DFF">
   <img alt="Platform" src="https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-5CD6FF">
   <img alt="Python" src="https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white">
   <img alt="PySide6" src="https://img.shields.io/badge/arayüz-PySide6-41CD52?logo=qt&logoColor=white">
@@ -52,6 +52,7 @@ bu sürümün parçası değildir.
 - Canlı CPU, RAM, disk, işletim sistemi ve donanım özeti
 - Uzun işlemlerde arayüzü kilitlemeyen arka plan yürütme altyapısı
 - Canlı görev çıktısı, ilerleme, iptal ve son 100 işlemlik yerel geçmiş
+- PowerShell ve çok adımlı görevlerde güvenilir hata/çıkış kodu aktarımı
 - Görev çıktısını panoya kopyalama ve UTF-8 rapor olarak dışa aktarma
 - Yönetici yetkisi durumu ve kritik işlemler için açık uyarılar
 - Windows 10/11 ile uyumlu tek dosyalık taşınabilir EXE
