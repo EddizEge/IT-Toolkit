@@ -7,6 +7,10 @@ from PySide6.QtWidgets import QFileDialog, QWidget
 
 from app_v2.pages.tools_page import ToolsPage
 from app_v2.registry import DATA_ACTIONS, DATA_TOGGLES, ToolAction
+from app_v2.services.command_builder import (
+    aggregate_sequence,
+    fail_fast_sequence,
+)
 from app_v2.services.preferences import ToolPreferences
 from app_v2.services.task_manager import TaskManager
 
@@ -51,7 +55,7 @@ class DataPage(ToolsPage):
             )
         self.start_command(
             action,
-            " & ".join(commands),
+            aggregate_sequence(commands, max_success_code=7),
             admin=False,
             keep_open=False,
             success_codes=tuple(range(8)),
@@ -66,7 +70,12 @@ class DataPage(ToolsPage):
             return
         self.start_command(
             action,
-            f'takeown /f "{folder}" /r /d y & icacls "{folder}" /grant administrators:F /t',
+            fail_fast_sequence(
+                (
+                    f'takeown /f "{folder}" /r /d y',
+                    f'icacls "{folder}" /grant administrators:F /t',
+                )
+            ),
             admin=True,
             keep_open=True,
         )

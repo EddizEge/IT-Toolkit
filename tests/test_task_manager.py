@@ -8,6 +8,10 @@ from pathlib import Path
 
 from PySide6.QtWidgets import QApplication
 
+from app_v2.services.command_builder import (
+    aggregate_sequence,
+    powershell_command,
+)
 from app_v2.services.task_manager import TaskManager
 
 
@@ -19,7 +23,11 @@ class TaskManagerTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
         self.history_path = Path(self.temporary.name) / "history.json"
-        self.manager = TaskManager(history_path=self.history_path)
+        self.script_directory = Path(self.temporary.name) / "task scripts"
+        self.manager = TaskManager(
+            history_path=self.history_path,
+            script_directory=self.script_directory,
+        )
 
     def tearDown(self) -> None:
         self.manager.shutdown()
@@ -54,6 +62,7 @@ class TaskManagerTests(unittest.TestCase):
         self.assertEqual(len(restored.tasks), 1)
         self.assertEqual(restored.tasks[0].status, "succeeded")
         self.assertIn("Çıktı testi", restored.report_text(task.id))
+        self.assertEqual(list(self.script_directory.glob("*.cmd")), [])
 
     def test_failed_task_keeps_exit_code(self) -> None:
         task = self.manager.start_command(
@@ -124,6 +133,42 @@ class TaskManagerTests(unittest.TestCase):
 
         self.assertEqual(restored.tasks[0].status, "interrupted")
         self.assertIn("yarım kaldı", restored.tasks[0].message)
+
+    def test_powershell_variables_are_executed_instead_of_echoed(self) -> None:
+        task = self.manager.start_command(
+            "PowerShell testi",
+            powershell_command(
+                "$value=42; Write-Output ('GERCEK_DEGER='+$value)"
+            ),
+            category="Test",
+        )
+
+        self.assertTrue(
+            self.wait_until(lambda: task.status == "succeeded"),
+            task.output,
+        )
+        self.assertIn("GERCEK_DEGER=42", task.output)
+        self.assertNotIn("$value=42", task.output)
+
+    def test_aggregate_sequence_does_not_hide_an_earlier_failure(self) -> None:
+        task = self.manager.start_command(
+            "Birleşik komut testi",
+            aggregate_sequence(
+                (
+                    "cmd /d /c exit 7",
+                    "echo IKINCI_KOMUT_CALISTI",
+                )
+            ),
+            category="Test",
+        )
+
+        self.assertTrue(
+            self.wait_until(lambda: task.status == "failed"),
+            task.output,
+        )
+        self.assertIn("IKINCI_KOMUT_CALISTI", task.output)
+        self.assertEqual(task.exit_code, 1)
+        self.assertEqual(list(self.script_directory.glob("*.cmd")), [])
 
 
 if __name__ == "__main__":

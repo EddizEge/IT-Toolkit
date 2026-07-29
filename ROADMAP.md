@@ -45,7 +45,7 @@ geri bildirimi öncelik sırasını değiştirebilir.
 
 ## v0.5.0-preview.1 — Hızlı erişim
 
-**Durum:** Mevcut yayın
+**Durum:** Tamamlandı — 29 Temmuz 2026
 
 **Hedef:** Günlük teknisyen işlerini daha az tıklamayla tamamlamak.
 
@@ -60,6 +60,24 @@ geri bildirimi öncelik sırasını değiştirebilir.
 
 **Çıkış ölçütü:** Tamamlandı. Sık kullanılan bir araç `Ctrl+K` ile klavyeden
 veya Hızlı Erişim sayfasından en fazla iki tıklamayla başlatılabiliyor.
+
+## v0.5.1-hotfix.1 — Modül güvenilirliği
+
+**Durum:** Mevcut yayın
+
+**Hedef:** Mevcut modüllerin komut, paket ve cihaz önkoşullarını güvenilir
+sonuç üretecek biçimde düzeltmek.
+
+- [x] PowerShell ve boşluklu yol tırnaklamasını merkezi görev motorunda düzeltme
+- [x] Çok adımlı görevlerde gerçek hata kodunu koruma
+- [x] SMART, Office lisansı, hazır akış ve dinlenen portlar canlı doğrulaması
+- [x] Güncel Winget kimlikleri ve resmi indirme sayfası yedekleri
+- [x] Minidump klasörü bulunmayan cihazlar için açıklayıcı önkoşul sonucu
+- [x] Geçici görev dosyalarını başarı, hata ve iptal sonunda temizleme
+- [x] 23 otomatik regresyon testi
+
+**Çıkış ölçütü:** Tamamlandı. Kritik salt okunur görevler gerçek çıktı üretiyor,
+önceki komut hataları gizlenmiyor ve görev dosyaları geride kalmıyor.
 
 ## v0.6.0-beta — Akıllı tanılama
 
