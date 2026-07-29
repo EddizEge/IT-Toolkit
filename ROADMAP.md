@@ -14,7 +14,7 @@ geri bildirimi öncelik sırasını değiştirebilir.
 
 ## v0.3.0-preview.1 — Yeni temel
 
-**Durum:** Mevcut yayın
+**Durum:** Tamamlandı — 29 Temmuz 2026
 
 - CustomTkinter’dan PySide6 mimarisine geçiş
 - Dokuz ana modülün yeni arayüze taşınması
@@ -25,19 +25,23 @@ geri bildirimi öncelik sırasını değiştirebilir.
 - Temiz ve güvenilir kaynak politikası
 - Windows için tek dosyalık EXE
 
-## v0.4.0-preview — Görev Merkezi
+## v0.4.0-preview.1 — Görev Merkezi
+
+**Durum:** Mevcut yayın
 
 **Hedef:** İşlemleri görünür, izlenebilir ve kontrol edilebilir hâle getirmek.
 
-- Çalışan işlemler için ilerleme ve canlı çıktı paneli
-- Uygun işlemlerde iptal desteği
-- Son işlemler ve sonuç geçmişi
-- Başarılı, uyarılı ve başarısız durumlar için ortak bildirim sistemi
-- Uzun görevlerde tahmini durum bilgisi
-- Komut çıktısını panoya kopyalama ve rapor olarak dışa aktarma
+- [x] Çalışan işlemler için ilerleme ve canlı çıktı paneli
+- [x] Uygun işlemlerde işlem ağacıyla iptal desteği
+- [x] Son 100 işlem için kalıcı yerel sonuç geçmişi
+- [x] Başarılı, uyarılı ve başarısız durumlar için ortak bildirim sistemi
+- [x] Yüzde çıktısı bulunan uzun görevlerde otomatik ilerleme algılama
+- [x] Komut çıktısını panoya kopyalama ve UTF-8 rapor olarak dışa aktarma
+- [x] Yönetici görevleri için açık harici-görev güvenlik sınırı
+- [x] Süreç, hata kodu, iptal ve oturum kurtarma testleri
 
-**Çıkış ölçütü:** Bir işlem çalışırken kullanıcı arayüzü akıcı kalmalı; sonuç ve
-hata bilgisi tek bir merkezden görülebilmeli.
+**Çıkış ölçütü:** Tamamlandı. Görevler arayüzü kilitlemeden çalışıyor; canlı
+çıktı, sonuç ve hata bilgisi tek merkezden görülebiliyor.
 
 ## v0.5.0-preview — Hızlı erişim
 

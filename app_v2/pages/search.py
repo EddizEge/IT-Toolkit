@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import ClassVar
+
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
     QFrame,
@@ -17,7 +19,7 @@ from app_v2.widgets import ActionTile
 class SearchPage(QWidget):
     action_requested = Signal(str, object)
 
-    PAGE_NAMES = {
+    PAGE_NAMES: ClassVar[dict[str, str]] = {
         "system": "Sistem Yönetimi",
         "network": "Ağ ve İnternet",
         "quick": "Hızlı Başlat",

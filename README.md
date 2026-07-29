@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img alt="Sürüm" src="https://img.shields.io/badge/sürüm-v0.3.0--preview.1-4C8DFF">
+  <img alt="Sürüm" src="https://img.shields.io/badge/sürüm-v0.4.0--preview.1-4C8DFF">
   <img alt="Platform" src="https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-5CD6FF">
   <img alt="Python" src="https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white">
   <img alt="PySide6" src="https://img.shields.io/badge/arayüz-PySide6-41CD52?logo=qt&logoColor=white">
@@ -27,7 +27,7 @@
   <a href="SECURITY.md">Güvenlik</a>
 </p>
 
-![IT Toolkit Microsoft Office ekranı](docs/images/dashboard.png)
+![IT Toolkit Görev Merkezi](docs/images/task-center-v0.4.png)
 
 ## Nedir?
 
@@ -43,11 +43,13 @@ bu sürümün parçası değildir.
 ## Öne çıkanlar
 
 - Modern koyu tema, özgün marka kimliği ve tutarlı SVG ikon sistemi
-- Dokuz ana modül altında 64 sistem ve destek işlemi
+- Dokuz araç modülü altında 64 işlem ve merkezi Görev Merkezi
 - 32 yazılım için resmi `winget` veya üretici kaynağı
 - Global araç arama ve bağlama göre gruplandırılmış işlemler
 - Canlı CPU, RAM, disk, işletim sistemi ve donanım özeti
 - Uzun işlemlerde arayüzü kilitlemeyen arka plan yürütme altyapısı
+- Canlı görev çıktısı, ilerleme, iptal ve son 100 işlemlik yerel geçmiş
+- Görev çıktısını panoya kopyalama ve UTF-8 rapor olarak dışa aktarma
 - Yönetici yetkisi durumu ve kritik işlemler için açık uyarılar
 - Windows 10/11 ile uyumlu tek dosyalık taşınabilir EXE
 
@@ -56,6 +58,7 @@ bu sürümün parçası değildir.
 | Modül | İçerik |
 | --- | --- |
 | Sistem Özeti | CPU, RAM, disk, donanım, işletim sistemi ve çalışma süresi |
+| Görev Merkezi | Canlı çıktı, ilerleme, iptal, sonuç geçmişi ve rapor dışa aktarma |
 | Sistem Yönetimi | Temizlik, onarım, yazıcı, önbellek, SMART ve geri yükleme araçları |
 | Ağ ve İnternet | IP/DNS sıfırlama, bağlantı analizi, Wi-Fi QR ve ağ yardımcıları |
 | Hızlı Başlat | Windows yönetim konsolları ve hızlı tanılama kısayolları |
@@ -72,7 +75,9 @@ main_v2.py
 └── app_v2/
     ├── main_window.py       # Ana pencere, menü ve global arama
     ├── pages/               # Modül ekranları
+    │   └── tasks.py         # Görev Merkezi ve canlı çıktı arayüzü
     ├── services/            # Komut, ayar ve sistem izleme servisleri
+    │   └── task_manager.py  # Süreç, iptal ve kalıcı geçmiş yönetimi
     ├── registry.py          # Araç ve paket tanımları
     ├── widgets.py           # Ortak arayüz bileşenleri
     ├── icons.py             # SVG ikon sistemi
@@ -82,6 +87,9 @@ main_v2.py
 Arayüz ana iş parçacığında kalır; sistem sorguları ve uzun komutlar arka
 planda yürütülür. Araç tanımları merkezi kayıt yapısından sayfalara dağıtılır,
 böylece yeni bir işlem eklemek veya aramada görünür yapmak kolaylaşır.
+Standart görevlerin çıktısı Qt süreç altyapısıyla anlık olarak Görev Merkezi’ne
+aktarılır. UAC ile ayrı yönetici penceresine devredilen görevler güvenlik sınırı
+nedeniyle harici görev olarak işaretlenir.
 
 ## İndirme
 

@@ -11,7 +11,6 @@ from typing import Any
 import psutil
 from PySide6.QtCore import QObject, QRunnable, QThreadPool, QTimer, Signal, Slot
 
-
 CREATE_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 
 
@@ -30,7 +29,7 @@ class FunctionWorker(QRunnable):
     def run(self) -> None:
         try:
             result = self.function()
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - background worker boundary
             try:
                 self.signals.failed.emit(str(exc))
             except RuntimeError:
@@ -106,6 +105,13 @@ def collect_system_specs() -> dict[str, str]:
     if (-not $net) { $net = "Aktif fiziksel bağlantı yok" }
     "$os|$cpu|$($gpus -join ' + ')|$boardName|$net"
     """
+    fallback = {
+        "os": platform.platform(),
+        "cpu": platform.processor() or "Bilinmiyor",
+        "gpu": "Bilinmiyor",
+        "board": "Bilinmiyor",
+        "network": "Bilinmiyor",
+    }
     try:
         parts = _run_powershell(script).split("|")
         if len(parts) >= 5:
@@ -116,16 +122,9 @@ def collect_system_specs() -> dict[str, str]:
                 "board": parts[3].strip(),
                 "network": parts[4].strip(),
             }
-    except Exception:
-        pass
-
-    return {
-        "os": platform.platform(),
-        "cpu": platform.processor() or "Bilinmiyor",
-        "gpu": "Bilinmiyor",
-        "board": "Bilinmiyor",
-        "network": "Bilinmiyor",
-    }
+    except (OSError, RuntimeError, subprocess.TimeoutExpired, ValueError):
+        return fallback
+    return fallback
 
 
 def collect_disks() -> list[dict[str, Any]]:
@@ -165,7 +164,7 @@ def collect_disks() -> list[dict[str, Any]]:
                     "percent": percent,
                 }
             )
-    except Exception:
+    except (OSError, RuntimeError, subprocess.TimeoutExpired, ValueError):
         for partition in psutil.disk_partitions(all=False):
             try:
                 usage = psutil.disk_usage(partition.mountpoint)

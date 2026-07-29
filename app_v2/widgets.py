@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from collections.abc import Callable
 from typing import Any
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -15,7 +14,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from app_v2.registry import ToolAction, ToggleAction
+from app_v2.registry import ToggleAction, ToolAction
 
 
 def clear_layout(layout: QVBoxLayout) -> None:
@@ -249,3 +248,56 @@ class ToggleRow(QFrame):
         self.status.setProperty("status", status)
         self.status.style().unpolish(self.status)
         self.status.style().polish(self.status)
+
+
+class ToastNotification(QFrame):
+    def __init__(self, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.setObjectName("ToastNotification")
+        self.setProperty("tone", "success")
+        self.setFixedWidth(390)
+        self.setMinimumHeight(78)
+        self.hide()
+
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(15, 12, 12, 12)
+        layout.setSpacing(10)
+
+        text_layout = QVBoxLayout()
+        text_layout.setSpacing(3)
+        self.title = QLabel()
+        self.title.setObjectName("SectionTitle")
+        self.message = QLabel()
+        self.message.setObjectName("CardSubtitle")
+        self.message.setWordWrap(True)
+        text_layout.addWidget(self.title)
+        text_layout.addWidget(self.message)
+
+        close_button = QPushButton("×")
+        close_button.setObjectName("ToastCloseButton")
+        close_button.setFixedSize(28, 28)
+        close_button.clicked.connect(self.hide)
+
+        layout.addLayout(text_layout, 1)
+        layout.addWidget(close_button, 0, Qt.AlignmentFlag.AlignTop)
+
+        self.timer = QTimer(self)
+        self.timer.setSingleShot(True)
+        self.timer.timeout.connect(self.hide)
+
+    def show_message(
+        self,
+        title: str,
+        message: str,
+        tone: str = "success",
+    ) -> None:
+        self.title.setText(title)
+        self.message.setText(message)
+        self.setProperty("tone", tone)
+        self.style().unpolish(self)
+        self.style().polish(self)
+        self.adjustSize()
+        self.setFixedWidth(390)
+        self.show()
+        self.raise_()
+        self.timer.start(5_000)

@@ -6,7 +6,6 @@ from PySide6.QtSvg import QSvgRenderer
 
 from app_v2.theme import COLORS
 
-
 SVG_PATHS = {
     "dashboard": """
         <rect x="3" y="3" width="7" height="7" rx="2"/>
@@ -50,6 +49,10 @@ SVG_PATHS = {
     "search": """
         <circle cx="10.5" cy="10.5" r="6.5"/>
         <path d="m15.5 15.5 5 5"/>
+    """,
+    "tasks": """
+        <rect x="4" y="3" width="16" height="18" rx="3"/>
+        <path d="m8 8 1.5 1.5L12 7M14 9h3M8 14l1.5 1.5L12 13M14 15h3"/>
     """,
 }
 

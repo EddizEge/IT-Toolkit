@@ -13,17 +13,22 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from app_v2.registry import SYSTEM_ACTIONS, SYSTEM_TOGGLES, ToolAction, ToggleAction
-from app_v2.services.command_runner import run_action
-from app_v2.services.settings_service import get_toggle_status, set_toggle
+from app_v2.registry import SYSTEM_ACTIONS, SYSTEM_TOGGLES, ToggleAction, ToolAction
+from app_v2.services.settings_service import get_toggle_status
+from app_v2.services.task_manager import TaskManager
 from app_v2.widgets import ActionTile, ToggleRow
 
 
 class SystemPage(QWidget):
     status_message = Signal(str, bool)
 
-    def __init__(self, parent: QWidget | None = None) -> None:
+    def __init__(
+        self,
+        parent: QWidget | None = None,
+        task_manager: TaskManager | None = None,
+    ) -> None:
         super().__init__(parent)
+        self.task_manager = task_manager or TaskManager(self)
         self._tiles: list[ActionTile] = []
         self._toggle_rows: dict[str, ToggleRow] = {}
 
@@ -111,7 +116,13 @@ class SystemPage(QWidget):
             if box.exec() != QMessageBox.StandardButton.Yes:
                 return
 
-        ok, message = run_action(action)
+        task = self.task_manager.start_action(action)
+        ok = task.status not in {"failed", "cancelled", "interrupted"}
+        message = (
+            task.message
+            if task.status in {"failed", "delegated"}
+            else "Görev Merkezi'ne eklendi."
+        )
         self.status_message.emit(f"{action.title}: {message}", ok)
 
     def _change_toggle(self, toggle: ToggleAction, enabled: bool) -> None:
@@ -126,7 +137,19 @@ class SystemPage(QWidget):
         if result != QMessageBox.StandardButton.Yes:
             return
 
-        ok, message = set_toggle(toggle, enabled)
+        task = self.task_manager.start_command(
+            toggle.title,
+            toggle.command_on if enabled else toggle.command_off,
+            category="Windows temel ayarları",
+            admin=True,
+            keep_open=False,
+        )
+        ok = task.status != "failed"
+        message = (
+            task.message
+            if task.status in {"failed", "delegated"}
+            else "Ayar görevi başlatıldı."
+        )
         self.status_message.emit(f"{toggle.title}: {message}", ok)
         QTimer.singleShot(2_500, self.refresh_toggle_statuses)
 

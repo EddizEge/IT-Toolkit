@@ -7,17 +7,22 @@ from PySide6.QtWidgets import QFileDialog, QWidget
 
 from app_v2.pages.tools_page import ToolsPage
 from app_v2.registry import MAIL_ACTIONS, ToolAction
-from app_v2.services.command_runner import run_command
+from app_v2.services.task_manager import TaskManager
 
 
 class MailPage(ToolsPage):
-    def __init__(self, parent: QWidget | None = None) -> None:
+    def __init__(
+        self,
+        parent: QWidget | None = None,
+        task_manager: TaskManager | None = None,
+    ) -> None:
         super().__init__(
             "E-Posta ve Outlook",
             "Klasik Outlook profil yönetimi, sorun giderme ve yerel arşiv yedekleme",
             MAIL_ACTIONS,
             custom_handlers={"pst_backup": self._backup_pst},
             parent=parent,
+            task_manager=task_manager,
         )
 
     def _backup_pst(self, action: ToolAction) -> None:
@@ -38,5 +43,10 @@ class MailPage(ToolsPage):
             f'robocopy "{source}" "{target}" *.pst *.ost '
             "/S /COPY:DAT /DCOPY:T /R:1 /W:1 /MT:8"
         )
-        ok, message = run_command(command, admin=False, keep_open=True)
-        self.report(action.title, ok, message)
+        self.start_command(
+            action,
+            command,
+            admin=False,
+            keep_open=False,
+            success_codes=tuple(range(8)),
+        )

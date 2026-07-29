@@ -3,9 +3,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from PySide6.QtGui import QColor, QFont, QIcon, QPainter, QPixmap
 from PySide6.QtCore import Qt
-
+from PySide6.QtGui import QColor, QFont, QIcon, QPainter, QPixmap
 
 COLORS = {
     "window": "#0D1117",
@@ -35,7 +34,7 @@ def app_font(size: int = 10, weight: QFont.Weight = QFont.Weight.Normal) -> QFon
 
 def resource_path(relative_path: str) -> Path:
     if hasattr(sys, "_MEIPASS"):
-        base = Path(getattr(sys, "_MEIPASS"))
+        base = Path(sys._MEIPASS)
     else:
         base = Path(__file__).resolve().parents[1]
     return base / relative_path
@@ -251,7 +250,8 @@ def build_stylesheet() -> str:
         height: 0;
     }}
 
-    QFrame#Card, QFrame#Panel, QFrame#ActionTile, QFrame#ToggleRow {{
+    QFrame#Card, QFrame#Panel, QFrame#ActionTile, QFrame#ToggleRow,
+    QFrame#TaskSummaryCard {{
         background: {COLORS["surface"]};
         border: 1px solid {COLORS["border_soft"]};
         border-radius: 13px;
@@ -270,6 +270,15 @@ def build_stylesheet() -> str:
     QLabel#MetricValue[tone="blue"] {{ color: #6EA4FF; }}
     QLabel#MetricValue[tone="green"] {{ color: {COLORS["success"]}; }}
     QLabel#MetricValue[tone="amber"] {{ color: {COLORS["warning"]}; }}
+
+    QLabel#TaskSummaryValue {{
+        font-size: 24px;
+        font-weight: 700;
+    }}
+
+    QLabel#TaskSummaryValue[tone="blue"] {{ color: #6EA4FF; }}
+    QLabel#TaskSummaryValue[tone="green"] {{ color: {COLORS["success"]}; }}
+    QLabel#TaskSummaryValue[tone="red"] {{ color: {COLORS["danger"]}; }}
 
     QProgressBar#MetricProgress, QProgressBar#DiskProgress {{
         background: #273140;
@@ -300,6 +309,61 @@ def build_stylesheet() -> str:
 
     QProgressBar#DiskProgress[usage="danger"]::chunk {{
         background: {COLORS["danger"]};
+    }}
+
+    QProgressBar#TaskProgress {{
+        background: #273140;
+        border: 0;
+        border-radius: 5px;
+        color: {COLORS["text"]};
+        min-height: 10px;
+        max-height: 10px;
+        text-align: center;
+    }}
+
+    QProgressBar#TaskProgress::chunk {{
+        background: {COLORS["primary"]};
+        border-radius: 5px;
+    }}
+
+    QListWidget#TaskList {{
+        background: transparent;
+        border: 0;
+        outline: 0;
+    }}
+
+    QListWidget#TaskList::item {{
+        background: {COLORS["surface_alt"]};
+        border: 1px solid {COLORS["border_soft"]};
+        border-radius: 9px;
+        color: {COLORS["muted"]};
+        min-height: 48px;
+        padding: 8px 10px;
+    }}
+
+    QListWidget#TaskList::item:hover {{
+        background: {COLORS["surface_hover"]};
+        color: {COLORS["text"]};
+    }}
+
+    QListWidget#TaskList::item:selected {{
+        background: #20324F;
+        border: 1px solid #31558A;
+        color: #A9C8FF;
+    }}
+
+    QPlainTextEdit#TaskOutput {{
+        background: #090D13;
+        border: 1px solid {COLORS["border_soft"]};
+        border-radius: 9px;
+        color: #C8D2DF;
+        padding: 10px;
+        selection-background-color: #284B7E;
+    }}
+
+    QSplitter::handle {{
+        background: transparent;
+        width: 10px;
     }}
 
     QPushButton#PrimaryButton, QPushButton#RunButton {{
@@ -348,6 +412,18 @@ def build_stylesheet() -> str:
         color: {COLORS["text"]};
     }}
 
+    QPushButton#GhostButton:disabled {{
+        background: transparent;
+        border-color: #252D39;
+        color: #536070;
+    }}
+
+    QPushButton#GhostButton[activeTasks="true"] {{
+        background: #20324F;
+        border: 1px solid #31558A;
+        color: #8BB6FF;
+    }}
+
     QPushButton#DangerButton {{
         background: #51242A;
         border: 0;
@@ -360,6 +436,41 @@ def build_stylesheet() -> str:
 
     QPushButton#DangerButton:hover {{
         background: #672B33;
+    }}
+
+    QPushButton#DangerButton:disabled {{
+        background: #2A2023;
+        color: #73545A;
+    }}
+
+    QFrame#ToastNotification {{
+        background: #15231F;
+        border: 1px solid #2A604B;
+        border-radius: 12px;
+    }}
+
+    QFrame#ToastNotification[tone="warning"] {{
+        background: #282318;
+        border: 1px solid #66562D;
+    }}
+
+    QFrame#ToastNotification[tone="danger"] {{
+        background: #2B1C20;
+        border: 1px solid #6B323B;
+    }}
+
+    QPushButton#ToastCloseButton {{
+        background: transparent;
+        border: 0;
+        border-radius: 6px;
+        color: {COLORS["muted"]};
+        font-size: 18px;
+        font-weight: 600;
+    }}
+
+    QPushButton#ToastCloseButton:hover {{
+        background: {COLORS["surface_hover"]};
+        color: {COLORS["text"]};
     }}
 
     QLabel#Badge {{

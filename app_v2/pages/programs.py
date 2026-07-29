@@ -13,11 +13,15 @@ from app_v2.registry import (
     PackageItem,
     ToolAction,
 )
-from app_v2.services.command_runner import run_command
+from app_v2.services.task_manager import TaskManager
 
 
 class ProgramsPage(ToolsPage):
-    def __init__(self, parent: QWidget | None = None) -> None:
+    def __init__(
+        self,
+        parent: QWidget | None = None,
+        task_manager: TaskManager | None = None,
+    ) -> None:
         super().__init__(
             "Program Kurulumu",
             "Resmi Winget paketleri ve üretici kaynaklarından toplu uygulama kurulumu",
@@ -27,6 +31,7 @@ class ProgramsPage(ToolsPage):
                 "driver_installer": self._open_driver_installer,
             },
             parent=parent,
+            task_manager=task_manager,
         )
 
     def _open_basic_installer(self, action: ToolAction) -> None:
@@ -70,8 +75,12 @@ class ProgramsPage(ToolsPage):
                 "--accept-package-agreements --accept-source-agreements"
                 for item in winget_packages
             )
-            ok, message = run_command(command, admin=True, keep_open=True)
-            self.report(action.title, ok, message)
+            self.start_command(
+                action,
+                command,
+                admin=True,
+                keep_open=True,
+            )
         elif urls:
             self.report(
                 action.title,
