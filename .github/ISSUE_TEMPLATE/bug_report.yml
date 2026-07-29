@@ -1,0 +1,57 @@
+name: Hata bildirimi
+description: Tekrarlanabilir bir uygulama hatasını bildirin
+title: "[Hata]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: Hassas bilgi, parola, lisans anahtarı veya müşteri verisi paylaşmayın.
+  - type: input
+    id: version
+    attributes:
+      label: IT Toolkit sürümü
+      placeholder: v0.3.0-preview.1
+    validations:
+      required: true
+  - type: dropdown
+    id: windows
+    attributes:
+      label: Windows sürümü
+      options:
+        - Windows 11
+        - Windows 10
+        - Diğer
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Sorun
+      description: Ne oldu ve ne olmasını bekliyordunuz?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Yeniden üretme adımları
+      placeholder: |
+        1. ... sayfasını açtım
+        2. ... düğmesine bastım
+        3. ... hatası göründü
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Ekran görüntüsü veya güvenli günlük
+      description: Kişisel ve hassas bilgileri mutlaka maskeleyin.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Kontrol
+      options:
+        - label: Aynı hatanın daha önce bildirilmediğini kontrol ettim.
+          required: true
+        - label: Paylaştığım içerikte hassas bilgi bulunmuyor.
+          required: true

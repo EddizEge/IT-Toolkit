@@ -1,0 +1,32 @@
+name: Özellik önerisi
+description: Yeni ve güvenli bir araç veya arayüz iyileştirmesi önerin
+title: "[Öneri]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: İhtiyaç
+      description: Hangi teknisyen işini veya kullanıcı sorununu çözmek istiyorsunuz?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Önerilen çözüm
+      description: Akışı ve beklenen sonucu açıklayın.
+    validations:
+      required: true
+  - type: textarea
+    id: source
+    attributes:
+      label: Resmi kaynak
+      description: Komut, API veya indirme için resmi belge bağlantısı varsa ekleyin.
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Güvenlik kontrolü
+      options:
+        - label: Öneri lisans atlatma, parola çözme veya korsan içerik içermiyor.
+          required: true

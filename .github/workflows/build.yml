@@ -1,0 +1,57 @@
+name: Windows Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 20
+
+    steps:
+      - name: Kaynak kodu al
+        uses: actions/checkout@v4
+
+      - name: Python kur
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Bağımlılıkları kur
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt pyinstaller
+
+      - name: Python kaynaklarını doğrula
+        run: python -m compileall -q app_v2 main_v2.py
+
+      - name: Windows EXE oluştur
+        shell: pwsh
+        run: |
+          python -m PyInstaller `
+            --noconfirm `
+            --clean `
+            --onefile `
+            --windowed `
+            --name "IT_Toolkit_CI" `
+            --icon "assets/brand/it_toolkit.ico" `
+            --add-data "assets/brand/it_toolkit.ico;assets/brand" `
+            "main_v2.py"
+
+      - name: Build çıktısını yükle
+        uses: actions/upload-artifact@v4
+        with:
+          name: IT-Toolkit-Windows
+          path: dist/IT_Toolkit_CI.exe
+          if-no-files-found: error
+          retention-days: 14

@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+.Python
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Build outputs
+build/
+dist/
+*.spec
+
+# Editors and operating system
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+*.log
+
+# Legacy workspace files; the public repository contains only the clean PySide6 edition
+/AGENTS.md
+/main.py
+/Baslat.bat
+/Derle.bat
+/GDRIVE_PROGRAMLAR.txt
+
+# Brand generation intermediates
+/assets/brand/it_toolkit_logo.png
+/assets/brand/it_toolkit_logo_chroma.png

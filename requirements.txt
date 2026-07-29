@@ -1,0 +1,3 @@
+psutil
+PySide6
+qrcode[pil]
