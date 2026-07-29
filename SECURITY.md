@@ -34,3 +34,7 @@ IT Toolkit yönetici yetkisi gerektirebilen sistem işlemleri yürütür. Proje:
 - Korsan/çatlak yazılım dağıtmamalı,
 - Resmi olmayan aktivasyon yöntemleri içermemeli,
 - Kritik değişiklikleri kullanıcıya açıklamadan uygulamamalıdır.
+
+Görev Merkezi çıktıları `%LOCALAPPDATA%\IT Toolkit\task_history.json`
+dosyasında yerel olarak saklanır. Dışa aktarılan raporlar IP, kullanıcı adı
+veya cihaz bilgisi içerebilir; paylaşmadan önce hassas alanları maskeleyin.

@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from PySide6.QtCore import QSize, Qt, QTimer
-from PySide6.QtGui import QCloseEvent
+from PySide6.QtGui import QCloseEvent, QResizeEvent
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -28,10 +28,13 @@ from app_v2.pages.programs import ProgramsPage
 from app_v2.pages.quick import QuickPage
 from app_v2.pages.search import SearchPage
 from app_v2.pages.system import SystemPage
+from app_v2.pages.tasks import TaskCenterPage
 from app_v2.pages.tools_page import ToolsPage
 from app_v2.registry import ToolAction
 from app_v2.services.command_runner import is_running_as_admin
+from app_v2.services.task_manager import ACTIVE_STATUSES, TaskManager
 from app_v2.theme import create_app_icon
+from app_v2.widgets import ToastNotification
 
 
 class MainWindow(QMainWindow):
@@ -46,6 +49,7 @@ class MainWindow(QMainWindow):
         self._nav_buttons: dict[str, QPushButton] = {}
         self._current_page = "dashboard"
         self._page_before_search = "dashboard"
+        self.task_manager = TaskManager(self)
 
         root = QWidget()
         root.setObjectName("AppRoot")
@@ -68,17 +72,29 @@ class MainWindow(QMainWindow):
 
         self._page_factories: dict[str, Callable[[], QWidget]] = {
             "dashboard": DashboardPage,
-            "system": SystemPage,
-            "network": NetworkPage,
-            "quick": QuickPage,
-            "data": DataPage,
-            "programs": ProgramsPage,
-            "office": OfficePage,
-            "mail": MailPage,
-            "iso": IsoPage,
+            "tasks": lambda: TaskCenterPage(self.task_manager),
+            "system": lambda: SystemPage(task_manager=self.task_manager),
+            "network": lambda: NetworkPage(task_manager=self.task_manager),
+            "quick": lambda: QuickPage(task_manager=self.task_manager),
+            "data": lambda: DataPage(task_manager=self.task_manager),
+            "programs": lambda: ProgramsPage(task_manager=self.task_manager),
+            "office": lambda: OfficePage(task_manager=self.task_manager),
+            "mail": lambda: MailPage(task_manager=self.task_manager),
+            "iso": lambda: IsoPage(task_manager=self.task_manager),
             "search": SearchPage,
         }
 
+        self.toast = ToastNotification(root)
+        self.task_manager.notification.connect(self._show_task_notification)
+        self.task_manager.counts_changed.connect(self._update_task_counts)
+        self._update_task_counts(
+            sum(
+                task.status in ACTIVE_STATUSES
+                for task in self.task_manager.tasks
+            ),
+            0,
+            0,
+        )
         self.show_page("dashboard")
 
     def _build_sidebar(self) -> QFrame:
@@ -111,6 +127,7 @@ class MainWindow(QMainWindow):
 
         navigation = (
             ("dashboard", "Sistem Özeti", "dashboard", "GENEL"),
+            ("tasks", "Görev Merkezi", "tasks", None),
             ("system", "Sistem Yönetimi", "system", None),
             ("network", "Ağ ve İnternet", "network", "ARAÇLAR"),
             ("quick", "Hızlı Başlat", "quick", None),
@@ -138,7 +155,7 @@ class MainWindow(QMainWindow):
             layout.addWidget(button)
 
         layout.addStretch()
-        progress = QLabel("V0.3 PREVIEW • TÜM MODÜLLER HAZIR")
+        progress = QLabel("V0.4 PREVIEW • GÖREV MERKEZİ")
         progress.setObjectName("VersionPill")
         progress.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(progress)
@@ -182,10 +199,17 @@ class MainWindow(QMainWindow):
         self.status_label.setObjectName("Muted")
         self.status_label.setMaximumWidth(280)
 
+        self.task_button = QPushButton("Görevler")
+        self.task_button.setObjectName("GhostButton")
+        self.task_button.setIcon(monochrome_icon("tasks"))
+        self.task_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.task_button.clicked.connect(self._open_task_center)
+
         layout.addWidget(self.context_label)
         layout.addStretch()
         layout.addWidget(self.search, 1)
         layout.addWidget(self.status_label)
+        layout.addWidget(self.task_button)
         layout.addWidget(admin)
         return topbar
 
@@ -209,6 +233,7 @@ class MainWindow(QMainWindow):
 
         titles = {
             "dashboard": "Sistem Özeti",
+            "tasks": "Görev Merkezi",
             "system": "Sistem Yönetimi",
             "network": "Ağ ve İnternet",
             "quick": "Hızlı Başlat",
@@ -217,6 +242,7 @@ class MainWindow(QMainWindow):
             "office": "Microsoft Office",
             "mail": "E-Posta / Outlook",
             "iso": "Windows ISO / USB",
+            "search": "Araç Arama",
         }
         self.context_label.setText(titles[key])
 
@@ -254,6 +280,42 @@ class MainWindow(QMainWindow):
         self.show_page(page_key)
         QTimer.singleShot(0, lambda: page.execute_action(action))
 
+    def _open_task_center(self) -> None:
+        self.search.blockSignals(True)
+        self.search.clear()
+        self.search.blockSignals(False)
+        self.show_page("tasks")
+
+    def _update_task_counts(
+        self,
+        running: int,
+        _succeeded: int,
+        _failed: int,
+    ) -> None:
+        self.task_button.setText(
+            f"Görevler • {running}" if running else "Görevler"
+        )
+        self.task_button.setProperty("activeTasks", running > 0)
+        self.task_button.style().unpolish(self.task_button)
+        self.task_button.style().polish(self.task_button)
+
+    def _show_task_notification(
+        self,
+        title: str,
+        message: str,
+        tone: str,
+    ) -> None:
+        self.toast.show_message(title, message, tone)
+        self._position_toast()
+
+    def _position_toast(self) -> None:
+        if not hasattr(self, "toast"):
+            return
+        margin = 22
+        x = self.centralWidget().width() - self.toast.width() - margin
+        y = self.centralWidget().height() - self.toast.height() - margin
+        self.toast.move(max(margin, x), max(74, y))
+
     def show_status(self, message: str, success: bool) -> None:
         self.status_label.setText(message)
         self.status_label.setStyleSheet(
@@ -265,8 +327,13 @@ class MainWindow(QMainWindow):
         self.status_label.setText("Hazır")
         self.status_label.setStyleSheet("")
 
+    def resizeEvent(self, event: QResizeEvent) -> None:
+        super().resizeEvent(event)
+        self._position_toast()
+
     def closeEvent(self, event: QCloseEvent) -> None:
         dashboard = self._pages.get("dashboard")
         if isinstance(dashboard, DashboardPage):
             dashboard.monitor.stop()
+        self.task_manager.shutdown()
         super().closeEvent(event)

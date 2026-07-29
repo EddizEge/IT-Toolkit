@@ -5,7 +5,6 @@ import subprocess
 
 from app_v2.registry import ToolAction
 
-
 CREATE_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 CREATE_NEW_CONSOLE = getattr(subprocess, "CREATE_NEW_CONSOLE", 0)
 
@@ -13,7 +12,7 @@ CREATE_NEW_CONSOLE = getattr(subprocess, "CREATE_NEW_CONSOLE", 0)
 def is_running_as_admin() -> bool:
     try:
         return bool(ctypes.windll.shell32.IsUserAnAdmin())
-    except Exception:
+    except (AttributeError, OSError):
         return False
 
 
@@ -36,7 +35,7 @@ def run_command(command: str, *, admin: bool, keep_open: bool) -> tuple[bool, st
         flags = CREATE_NEW_CONSOLE if keep_open else CREATE_NO_WINDOW
         subprocess.Popen(["cmd.exe", switch, command], creationflags=flags)
         return True, "İşlem başlatıldı."
-    except Exception as exc:
+    except (AttributeError, OSError, ValueError) as exc:
         return False, f"İşlem başlatılamadı: {exc}"
 
 

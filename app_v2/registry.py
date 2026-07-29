@@ -185,7 +185,7 @@ NETWORK_ACTIONS = (
         "Yerel ağı tara",
         "Mevcut IPv4 alt ağındaki yanıt veren cihazları tarar ve listeler.",
         "Temel Ağ İşlemleri",
-        r"""powershell -NoProfile -Command "$ip=(Get-NetIPAddress -AddressFamily IPv4|Where-Object {$_.IPAddress -notlike '169.254*' -and $_.IPAddress -notlike '127.*'}|Select-Object -First 1 -ExpandProperty IPAddress);if(-not $ip){Write-Host 'Etkin IPv4 adresi bulunamadı';Read-Host;exit};$base=$ip.Substring(0,$ip.LastIndexOf('.'));1..254|ForEach-Object{$target=$base+'.'+$_;if(Test-Connection $target -Count 1 -Quiet -TimeoutSeconds 1){Write-Host ('AKTİF: '+$target) -ForegroundColor Green}};Read-Host 'Kapatmak için Enter'""",
+        r"""powershell -NoProfile -Command "$ip=(Get-NetIPAddress -AddressFamily IPv4|Where-Object {$_.IPAddress -notlike '169.254*' -and $_.IPAddress -notlike '127.*'}|Select-Object -First 1 -ExpandProperty IPAddress);if(-not $ip){Write-Host 'Etkin IPv4 adresi bulunamadı';exit 1};$base=$ip.Substring(0,$ip.LastIndexOf('.'));1..254|ForEach-Object{$target=$base+'.'+$_;if(Test-Connection $target -Count 1 -Quiet -TimeoutSeconds 1){Write-Host ('AKTİF: '+$target) -ForegroundColor Green}}""",
     ),
     ToolAction(
         "wifi_profiles",
@@ -312,7 +312,7 @@ OFFICE_ACTIONS = (
         "Office lisans durumunu görüntüle",
         "Yüklü Office sürümünün OSPP lisans ayrıntılarını yerel olarak gösterir.",
         "Tanılama",
-        r"""powershell -NoProfile -Command "$roots=@($env:ProgramFiles,${env:ProgramFiles(x86)})|Where-Object {$_};$p=Get-ChildItem $roots -Filter OSPP.VBS -Recurse -ErrorAction SilentlyContinue|Select-Object -First 1;if($p){cscript.exe //nologo $p.FullName /dstatus}else{Write-Host 'OSPP.VBS bulunamadı'};Read-Host 'Kapatmak için Enter'""",
+        r"""powershell -NoProfile -Command "$roots=@($env:ProgramFiles,${env:ProgramFiles(x86)})|Where-Object {$_};$p=Get-ChildItem $roots -Filter OSPP.VBS -Recurse -ErrorAction SilentlyContinue|Select-Object -First 1;if($p){cscript.exe //nologo $p.FullName /dstatus}else{Write-Host 'OSPP.VBS bulunamadı';exit 1}""",
     ),
 )
 

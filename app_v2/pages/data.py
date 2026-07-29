@@ -7,11 +7,15 @@ from PySide6.QtWidgets import QFileDialog, QWidget
 
 from app_v2.pages.tools_page import ToolsPage
 from app_v2.registry import DATA_ACTIONS, DATA_TOGGLES, ToolAction
-from app_v2.services.command_runner import run_command
+from app_v2.services.task_manager import TaskManager
 
 
 class DataPage(ToolsPage):
-    def __init__(self, parent: QWidget | None = None) -> None:
+    def __init__(
+        self,
+        parent: QWidget | None = None,
+        task_manager: TaskManager | None = None,
+    ) -> None:
         super().__init__(
             "Veri Taşıma ve Yedekleme",
             "Kullanıcı verilerini güvenli biçimde kopyalama, envanter ve disk araçları",
@@ -22,7 +26,8 @@ class DataPage(ToolsPage):
                 "take_ownership": self._take_ownership,
                 "wipe_free_space": self._wipe_free_space,
             },
-            parent,
+            parent=parent,
+            task_manager=task_manager,
         )
 
     def _backup_profile(self, action: ToolAction) -> None:
@@ -41,12 +46,13 @@ class DataPage(ToolsPage):
             commands.append(
                 f'robocopy "{source}" "{target}" /E /COPY:DAT /DCOPY:T /R:1 /W:1 /MT:8'
             )
-        ok, message = run_command(
+        self.start_command(
+            action,
             " & ".join(commands),
             admin=False,
-            keep_open=True,
+            keep_open=False,
+            success_codes=tuple(range(8)),
         )
-        self.report(action.title, ok, message)
 
     def _take_ownership(self, action: ToolAction) -> None:
         folder = QFileDialog.getExistingDirectory(
@@ -55,12 +61,12 @@ class DataPage(ToolsPage):
         )
         if not folder:
             return
-        ok, message = run_command(
+        self.start_command(
+            action,
             f'takeown /f "{folder}" /r /d y & icacls "{folder}" /grant administrators:F /t',
             admin=True,
             keep_open=True,
         )
-        self.report(action.title, ok, message)
 
     def _wipe_free_space(self, action: ToolAction) -> None:
         folder = QFileDialog.getExistingDirectory(
@@ -74,9 +80,9 @@ class DataPage(ToolsPage):
         if not drive:
             self.report(action.title, False, "Yerel bir Windows sürücüsü seçin.")
             return
-        ok, message = run_command(
+        self.start_command(
+            action,
             f"cipher /w:{drive}\\",
             admin=True,
             keep_open=True,
         )
-        self.report(action.title, ok, message)

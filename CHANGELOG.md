@@ -7,8 +7,35 @@ izler ve proje [SemVer](https://semver.org/) kullanır.
 
 ### Planlanan
 
-- Görev Merkezi, canlı çıktı ve işlem geçmişi
 - Favoriler ve komut paleti
+
+## [0.4.0-preview.1] - 2026-07-29
+
+### Eklendi
+
+- Çalışan, başarılı ve sorunlu işlemleri özetleyen Görev Merkezi
+- Standart ve mevcut yönetici oturumundaki komutlar için canlı çıktı
+- Yüzde içeren komut çıktılarında otomatik ilerleme algılama
+- Sürekli ping gibi uygun görevleri işlem ağacıyla iptal etme
+- En fazla 100 kayıt tutan yerel JSON görev geçmişi
+- Önceki oturumda yarım kalan görevleri algılama
+- Görev çıktısını panoya kopyalama
+- UTF-8 görev raporu dışa aktarma
+- Başarı, uyarı ve hata bildirimleri
+- Beş süreç yaşam döngüsü testi
+
+### Değiştirildi
+
+- Normal komutlar harici konsol yerine yönetilen arka plan süreçlerinde çalışıyor
+- Robocopy’nin 0–7 çıkış kodları başarılı sonuç olarak yorumlanıyor
+- Alt ağ taraması ve Office lisans tanılama çıktısı Görev Merkezi’ne uyarlandı
+- GitHub build ve Release akışları paketlemeden önce testleri çalıştırıyor
+
+### Güvenlik
+
+- UAC ile ayrı yönetici penceresine devredilen görevlerin çıktısı yakalanmıyor;
+  bu sınır arayüzde açıkça belirtiliyor
+- Görev geçmişi yalnızca yerel kullanıcı verisi alanında saklanıyor
 
 ## [0.3.0-preview.1] - 2026-07-29
 
@@ -37,5 +64,6 @@ izler ve proje [SemVer](https://semver.org/) kullanır.
   çıkarıldı
 - Güvenilir olmayan indirme bağlantıları kaldırıldı
 
-[Yayınlanmadı]: https://github.com/EddizEge/IT-Toolkit/compare/v0.3.0-preview.1...HEAD
+[Yayınlanmadı]: https://github.com/EddizEge/IT-Toolkit/compare/v0.4.0-preview.1...HEAD
+[0.4.0-preview.1]: https://github.com/EddizEge/IT-Toolkit/compare/v0.3.0-preview.1...v0.4.0-preview.1
 [0.3.0-preview.1]: https://github.com/EddizEge/IT-Toolkit/releases/tag/v0.3.0-preview.1

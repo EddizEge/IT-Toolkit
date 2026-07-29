@@ -21,6 +21,14 @@ python -m pip install -r requirements.txt
 python main_v2.py
 ```
 
+Geliştirme ve doğrulama araçları için:
+
+```powershell
+python -m pip install -r requirements-dev.txt
+ruff check app_v2 tests main_v2.py
+python -m unittest discover -s tests -v
+```
+
 ## Kod ilkeleri
 
 - Kullanıcıya görünen tüm metinler Türkçe olmalıdır.

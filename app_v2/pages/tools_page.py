@@ -15,9 +15,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from app_v2.registry import ToolAction, ToggleAction
-from app_v2.services.command_runner import run_action
-from app_v2.services.settings_service import get_toggle_status, set_toggle
+from app_v2.registry import ToggleAction, ToolAction
+from app_v2.services.settings_service import get_toggle_status
+from app_v2.services.task_manager import TaskManager
 from app_v2.widgets import ActionTile, ToggleRow
 
 
@@ -32,9 +32,12 @@ class ToolsPage(QWidget):
         toggles: tuple[ToggleAction, ...] = (),
         custom_handlers: dict[str, Callable[[ToolAction], None]] | None = None,
         parent: QWidget | None = None,
+        task_manager: TaskManager | None = None,
     ) -> None:
         super().__init__(parent)
         self.actions = actions
+        self.page_title = title
+        self.task_manager = task_manager or TaskManager(self)
         self._handlers = custom_handlers or {}
         self._tiles: list[ActionTile] = []
         self._sections: list[tuple[QWidget, list[ActionTile]]] = []
@@ -167,11 +170,48 @@ class ToolsPage(QWidget):
             handler(action)
             return
 
-        ok, message = run_action(action)
+        task = self.task_manager.start_action(action)
+        ok = task.status not in {"failed", "cancelled", "interrupted"}
+        message = (
+            task.message
+            if task.status in {"failed", "delegated"}
+            else "Görev Merkezi'ne eklendi."
+        )
         self.status_message.emit(f"{action.title}: {message}", ok)
 
     def report(self, title: str, ok: bool, message: str) -> None:
+        self.task_manager.record_result(
+            title,
+            message,
+            success=ok,
+            category=self.page_title,
+        )
         self.status_message.emit(f"{title}: {message}", ok)
+
+    def start_command(
+        self,
+        action: ToolAction,
+        command: str,
+        *,
+        admin: bool | None = None,
+        keep_open: bool | None = None,
+        success_codes: tuple[int, ...] = (0,),
+    ) -> None:
+        task = self.task_manager.start_command(
+            action.title,
+            command,
+            category=action.category,
+            admin=action.admin if admin is None else admin,
+            keep_open=action.keep_open if keep_open is None else keep_open,
+            success_codes=success_codes,
+        )
+        ok = task.status != "failed"
+        message = (
+            task.message
+            if task.status in {"failed", "delegated"}
+            else "Görev Merkezi'ne eklendi."
+        )
+        self.status_message.emit(f"{action.title}: {message}", ok)
 
     def _change_toggle(self, toggle: ToggleAction, enabled: bool) -> None:
         target = "açmak" if enabled else "kapatmak"
@@ -189,7 +229,19 @@ class ToolsPage(QWidget):
         )
         if result != QMessageBox.StandardButton.Yes:
             return
-        ok, message = set_toggle(toggle, enabled)
+        task = self.task_manager.start_command(
+            toggle.title,
+            toggle.command_on if enabled else toggle.command_off,
+            category="Temel ayarlar",
+            admin=True,
+            keep_open=False,
+        )
+        ok = task.status != "failed"
+        message = (
+            task.message
+            if task.status in {"failed", "delegated"}
+            else "Ayar görevi başlatıldı."
+        )
         self.status_message.emit(f"{toggle.title}: {message}", ok)
         QTimer.singleShot(3_000, self.refresh_toggle_statuses)
 

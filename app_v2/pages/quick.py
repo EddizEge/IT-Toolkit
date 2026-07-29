@@ -4,17 +4,22 @@ from PySide6.QtWidgets import QInputDialog, QWidget
 
 from app_v2.pages.tools_page import ToolsPage
 from app_v2.registry import QUICK_ACTIONS, ToolAction
-from app_v2.services.command_runner import run_command
+from app_v2.services.task_manager import TaskManager
 
 
 class QuickPage(ToolsPage):
-    def __init__(self, parent: QWidget | None = None) -> None:
+    def __init__(
+        self,
+        parent: QWidget | None = None,
+        task_manager: TaskManager | None = None,
+    ) -> None:
         super().__init__(
             "Hızlı Başlat",
             "Windows yönetim konsolları, tanılama ve kurtarma kısayolları",
             QUICK_ACTIONS,
             custom_handlers={"shutdown_schedule": self._schedule_shutdown},
             parent=parent,
+            task_manager=task_manager,
         )
 
     def _schedule_shutdown(self, action: ToolAction) -> None:
@@ -29,9 +34,9 @@ class QuickPage(ToolsPage):
         )
         if not accepted:
             return
-        ok, message = run_command(
+        self.start_command(
+            action,
             f"shutdown /s /t {minutes * 60}",
             admin=False,
             keep_open=False,
         )
-        self.report(action.title, ok, f"{minutes} dakika için {message.lower()}")
