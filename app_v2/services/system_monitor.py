@@ -131,7 +131,7 @@ def collect_disks() -> list[dict[str, Any]]:
     script = r"""
     Get-Volume |
         Where-Object DriveType -eq 'Fixed' |
-        Where-Object DriveLetter -ne $null |
+        Where-Object { $null -ne $_.DriveLetter } |
         ForEach-Object {
             $letter = $_.DriveLetter + ":"
             $model = $_.FileSystemLabel

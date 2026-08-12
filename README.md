@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img alt="Sürüm" src="https://img.shields.io/badge/sürüm-v0.5.1--hotfix.1-4C8DFF">
+  <img alt="Sürüm" src="https://img.shields.io/badge/sürüm-v0.6.0--beta.1-4C8DFF">
   <img alt="Platform" src="https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-5CD6FF">
   <img alt="Python" src="https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white">
   <img alt="PySide6" src="https://img.shields.io/badge/arayüz-PySide6-41CD52?logo=qt&logoColor=white">
@@ -43,6 +43,9 @@ bu sürümün parçası değildir.
 ## Öne çıkanlar
 
 - Modern koyu tema, özgün marka kimliği ve tutarlı SVG ikon sistemi
+- Açıklanabilir 0–100 sağlık puanı ve önem seviyeli akıllı tanılama
+- Disk, bellek, pil, Windows Update ve yeniden başlatma kontrolleri
+- Her bulgu için yerel kanıt, güvenli öneri ve puan etkisi
 - Dokuz araç modülü altında 64 işlem ve merkezi Görev Merkezi
 - 32 yazılım için resmi `winget` veya üretici kaynağı
 - Global araç arama ve bağlama göre gruplandırılmış işlemler
@@ -62,6 +65,7 @@ bu sürümün parçası değildir.
 | Modül | İçerik |
 | --- | --- |
 | Sistem Özeti | CPU, RAM, disk, donanım, işletim sistemi ve çalışma süresi |
+| Akıllı Tanılama | Sağlık puanı, önem seviyeli bulgular, kanıtlar ve güvenli öneriler |
 | Hızlı Erişim | Favoriler, son kullanılanlar ve teknisyen hazır akışları |
 | Görev Merkezi | Canlı çıktı, ilerleme, iptal, sonuç geçmişi ve rapor dışa aktarma |
 | Sistem Yönetimi | Temizlik, onarım, yazıcı, önbellek, SMART ve geri yükleme araçları |
