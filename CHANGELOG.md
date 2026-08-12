@@ -10,6 +10,39 @@ izler ve proje [SemVer](https://semver.org/) kullanır.
 - Açıklanabilir sistem sağlık puanı ve tanılama özeti
 - Güvenli geri alma ve otomatik geri yükleme noktası akışları
 
+## [0.6.0-beta.1] - 2026-08-12
+
+### Eklendi
+
+- Disk, bellek, pil, Windows Update ve yeniden başlatma durumunu değerlendiren
+  yeni Akıllı Tanılama modülü
+- Uyarıların ağırlığına göre hesaplanan açıklanabilir 0–100 sağlık puanı
+- Kritik, uyarı, bilgi ve iyi seviyelerinde sıralanmış tanılama bulguları
+- Her bulgu için ölçülen kanıt, güvenli öneri ve puan etkisi
+- Tek tıkla yeniden tarama ve tanılama raporunu panoya kopyalama
+- Tanılama sonucunu Görev Merkezi geçmişine kaydetme
+- Akıllı Tanılama için yeni sol menü ikonu ve `Alt+4` kısayolu
+
+### Değiştirildi
+
+- Disk doluluk değerlendirmesi yalnızca yüzdeye değil kullanılabilir mutlak boş
+  alana da bakıyor; büyük disklerde yanıltıcı kritik uyarılar önleniyor
+- Sistem özeti disk sorgusundaki PowerShell null filtrelemesi düzeltildi
+- Sol menü sürüm alanı beta kanalını ve Akıllı Tanılama odağını gösteriyor
+
+### Güvenlik
+
+- Tanılama yalnızca salt okunur yerel Windows ve donanım sorguları kullanıyor
+- Kopyalanabilir sağlık raporu kullanıcı adı ve IP adresi içermiyor
+- Sağlık önerileri sistem ayarlarını otomatik değiştirmiyor
+
+### Kalite
+
+- Sağlıklı, uyarılı, kritik, eksik veri ve tek kayıt senaryoları için sağlık
+  motoru testleri eklendi
+- Toplam 29 otomatik test, gerçek Windows veri toplama ve masaüstü arayüz
+  doğrulaması tamamlandı
+
 ## [0.5.1-hotfix.1] - 2026-07-29
 
 ### Düzeltildi
@@ -122,7 +155,8 @@ izler ve proje [SemVer](https://semver.org/) kullanır.
   çıkarıldı
 - Güvenilir olmayan indirme bağlantıları kaldırıldı
 
-[Yayınlanmadı]: https://github.com/EddizEge/IT-Toolkit/compare/v0.5.1-hotfix.1...HEAD
+[Yayınlanmadı]: https://github.com/EddizEge/IT-Toolkit/compare/v0.6.0-beta.1...HEAD
+[0.6.0-beta.1]: https://github.com/EddizEge/IT-Toolkit/compare/v0.5.1-hotfix.1...v0.6.0-beta.1
 [0.5.1-hotfix.1]: https://github.com/EddizEge/IT-Toolkit/compare/v0.5.0-preview.1...v0.5.1-hotfix.1
 [0.5.0-preview.1]: https://github.com/EddizEge/IT-Toolkit/compare/v0.4.0-preview.1...v0.5.0-preview.1
 [0.4.0-preview.1]: https://github.com/EddizEge/IT-Toolkit/compare/v0.3.0-preview.1...v0.4.0-preview.1

@@ -26,8 +26,8 @@ Etiketler SemVer ön ekiyle oluşturulur:
 ## Yerel komutlar
 
 ```powershell
-git tag -a v0.5.1-hotfix.1 -m "IT Toolkit v0.5.1-hotfix.1"
-git push origin v0.5.1-hotfix.1
+git tag -a v0.6.0-beta.1 -m "IT Toolkit v0.6.0-beta.1"
+git push origin v0.6.0-beta.1
 ```
 
 Ardından GitHub üzerinde bu etiketten bir Release oluşturun. Release

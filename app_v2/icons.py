@@ -13,6 +13,10 @@ SVG_PATHS = {
         <rect x="3" y="14" width="7" height="7" rx="2"/>
         <rect x="14" y="14" width="7" height="7" rx="2"/>
     """,
+    "health": """
+        <path d="M3 12h4l2.2-5 3.3 10 2.2-5H21"/>
+        <path d="M12 21C7 18.1 4 15.3 4 10.5A4.5 4.5 0 0 1 12 7.7a4.5 4.5 0 0 1 8 2.8c0 4.8-3 7.6-8 10.5z"/>
+    """,
     "system": """
         <path d="M4 7h10M18 7h2M4 17h2M10 17h10"/>
         <circle cx="16" cy="7" r="2"/>

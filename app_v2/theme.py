@@ -265,11 +265,73 @@ def build_stylesheet() -> str:
     }}
 
     QFrame#Card, QFrame#Panel, QFrame#ActionTile, QFrame#ToggleRow,
-    QFrame#TaskSummaryCard, QFrame#QuickAccessRow {{
+    QFrame#TaskSummaryCard, QFrame#QuickAccessRow, QFrame#HealthSummary,
+    QFrame#HealthMethod, QFrame#HealthFinding {{
         background: {COLORS["surface"]};
         border: 1px solid {COLORS["border_soft"]};
         border-radius: 13px;
     }}
+
+    QFrame#HealthSummary[tone="good"] {{ border: 1px solid #285A47; }}
+    QFrame#HealthSummary[tone="info"] {{ border: 1px solid #31558A; }}
+    QFrame#HealthSummary[tone="warning"] {{ border: 1px solid #66562D; }}
+    QFrame#HealthSummary[tone="critical"] {{ border: 1px solid #6B323B; }}
+
+    QFrame#HealthMethod {{
+        background: #111923;
+        border: 1px solid #253349;
+    }}
+
+    QFrame#HealthFinding[severity="good"] {{ border-left: 3px solid {COLORS["success"]}; }}
+    QFrame#HealthFinding[severity="info"] {{ border-left: 3px solid {COLORS["primary"]}; }}
+    QFrame#HealthFinding[severity="warning"] {{ border-left: 3px solid {COLORS["warning"]}; }}
+    QFrame#HealthFinding[severity="critical"] {{ border-left: 3px solid {COLORS["danger"]}; }}
+
+    QFrame#HealthDivider {{
+        color: {COLORS["border"]};
+        background: {COLORS["border"]};
+        min-width: 1px;
+        max-width: 1px;
+    }}
+
+    QLabel#HealthScore {{
+        font-size: 32px;
+        font-weight: 750;
+    }}
+
+    QLabel#HealthScore[tone="good"] {{ color: {COLORS["success"]}; }}
+    QLabel#HealthScore[tone="info"] {{ color: #6EA4FF; }}
+    QLabel#HealthScore[tone="warning"] {{ color: {COLORS["warning"]}; }}
+    QLabel#HealthScore[tone="critical"] {{ color: {COLORS["danger"]}; }}
+
+    QLabel#HealthCounts {{
+        color: #B9C5D5;
+        font-size: 12px;
+        font-weight: 650;
+    }}
+
+    QLabel#HealthRecommendation {{ color: #C8D3E1; }}
+
+    QLabel#HealthMarker {{
+        border-radius: 17px;
+        font-size: 16px;
+        font-weight: 800;
+    }}
+
+    QLabel#HealthMarker[severity="good"] {{ background: #172D25; color: {COLORS["success"]}; }}
+    QLabel#HealthMarker[severity="info"] {{ background: #17253A; color: #78A8F7; }}
+    QLabel#HealthMarker[severity="warning"] {{ background: #2D2A20; color: {COLORS["warning"]}; }}
+    QLabel#HealthMarker[severity="critical"] {{ background: #352226; color: {COLORS["danger"]}; }}
+
+    QLabel#HealthImpact {{
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 750;
+        padding: 5px 8px;
+    }}
+
+    QLabel#HealthImpact[severity="warning"] {{ background: #2D2A20; color: {COLORS["warning"]}; }}
+    QLabel#HealthImpact[severity="critical"] {{ background: #352226; color: {COLORS["danger"]}; }}
 
     QFrame#ActionTile:hover {{
         background: {COLORS["surface_alt"]};
@@ -334,6 +396,19 @@ def build_stylesheet() -> str:
         max-height: 10px;
         text-align: center;
     }}
+
+    QProgressBar#HealthProgress {{
+        background: #273140;
+        border: 0;
+        border-radius: 4px;
+        min-height: 8px;
+        max-height: 8px;
+    }}
+
+    QProgressBar#HealthProgress::chunk {{ background: {COLORS["primary"]}; border-radius: 4px; }}
+    QProgressBar#HealthProgress[tone="good"]::chunk {{ background: {COLORS["success"]}; }}
+    QProgressBar#HealthProgress[tone="warning"]::chunk {{ background: {COLORS["warning"]}; }}
+    QProgressBar#HealthProgress[tone="critical"]::chunk {{ background: {COLORS["danger"]}; }}
 
     QProgressBar#TaskProgress::chunk {{
         background: {COLORS["primary"]};

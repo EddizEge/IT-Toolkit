@@ -21,6 +21,7 @@ from app_v2.command_palette import CommandPalette
 from app_v2.icons import monochrome_icon, navigation_icon
 from app_v2.pages.dashboard import DashboardPage
 from app_v2.pages.data import DataPage
+from app_v2.pages.health import HealthPage
 from app_v2.pages.iso import IsoPage
 from app_v2.pages.mail import MailPage
 from app_v2.pages.network import NetworkPage
@@ -78,6 +79,7 @@ class MainWindow(QMainWindow):
 
         self._page_factories: dict[str, Callable[[], QWidget]] = {
             "dashboard": DashboardPage,
+            "health": lambda: HealthPage(self.task_manager),
             "access": lambda: QuickAccessPage(
                 self.preferences,
                 self.task_manager,
@@ -123,6 +125,7 @@ class MainWindow(QMainWindow):
         self._add_shortcut("Alt+1", lambda: self._navigate_from_sidebar("dashboard"))
         self._add_shortcut("Alt+2", lambda: self._navigate_from_sidebar("access"))
         self._add_shortcut("Alt+3", lambda: self._navigate_from_sidebar("tasks"))
+        self._add_shortcut("Alt+4", lambda: self._navigate_from_sidebar("health"))
 
         self.toast = ToastNotification(root)
         self.task_manager.notification.connect(self._show_task_notification)
@@ -167,6 +170,7 @@ class MainWindow(QMainWindow):
 
         navigation = (
             ("dashboard", "Sistem Özeti", "dashboard", "GENEL"),
+            ("health", "Akıllı Tanılama", "health", None),
             ("access", "Hızlı Erişim", "access", None),
             ("tasks", "Görev Merkezi", "tasks", None),
             ("system", "Sistem Yönetimi", "system", None),
@@ -196,11 +200,11 @@ class MainWindow(QMainWindow):
             layout.addWidget(button)
 
         layout.addStretch()
-        progress = QLabel("V0.5 PREVIEW • HIZLI ERİŞİM")
+        progress = QLabel("V0.6 BETA • AKILLI TANILAMA")
         progress.setObjectName("VersionPill")
         progress.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(progress)
-        version = QLabel(f"Önizleme {__version__}\nEdiz Ege Mercan")
+        version = QLabel(f"Beta {__version__}\nEdiz Ege Mercan")
         version.setObjectName("BrandSubtitle")
         version.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(version)
@@ -267,6 +271,8 @@ class MainWindow(QMainWindow):
             page = self._page_factories[key]()
             if isinstance(page, (SystemPage, ToolsPage)):
                 page.status_message.connect(self.show_status)
+            if isinstance(page, HealthPage):
+                page.status_message.connect(self.show_status)
             if isinstance(page, QuickAccessPage):
                 page.status_message.connect(self.show_status)
                 page.action_requested.connect(self._run_search_result)
@@ -285,6 +291,7 @@ class MainWindow(QMainWindow):
 
         titles = {
             "dashboard": "Sistem Özeti",
+            "health": "Akıllı Tanılama",
             "access": "Hızlı Erişim",
             "tasks": "Görev Merkezi",
             "system": "Sistem Yönetimi",

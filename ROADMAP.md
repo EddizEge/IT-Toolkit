@@ -63,7 +63,7 @@ veya Hızlı Erişim sayfasından en fazla iki tıklamayla başlatılabiliyor.
 
 ## v0.5.1-hotfix.1 — Modül güvenilirliği
 
-**Durum:** Mevcut yayın
+**Durum:** Tamamlandı — 29 Temmuz 2026
 
 **Hedef:** Mevcut modüllerin komut, paket ve cihaz önkoşullarını güvenilir
 sonuç üretecek biçimde düzeltmek.
@@ -79,19 +79,28 @@ sonuç üretecek biçimde düzeltmek.
 **Çıkış ölçütü:** Tamamlandı. Kritik salt okunur görevler gerçek çıktı üretiyor,
 önceki komut hataları gizlenmiyor ve görev dosyaları geride kalmıyor.
 
-## v0.6.0-beta — Akıllı tanılama
+## v0.6.0-beta.1 — Akıllı tanılama temeli
+
+**Durum:** Mevcut yayın
 
 **Hedef:** Salt araç listesinden karar destek merkezine geçmek.
 
-- Sistem sağlığı uyarıları ve önem dereceleri
-- Disk alanı, pil sağlığı, güncelleme ve yeniden başlatma önerileri
-- Tek tıkla tanılama özeti
-- Teknisyen notları ve müşteri teslim raporu
-- Cihaz profiline göre güvenli öneriler
-- Tanılama sonuçlarında hassas veri maskeleme
+- [x] Sistem sağlığı uyarıları ve önem dereceleri
+- [x] Açıklanabilir 0–100 sağlık puanı
+- [x] Disk alanı, fiziksel disk, bellek ve pil sağlığı kontrolleri
+- [x] Windows güncelleme ve yeniden başlatma önerileri
+- [x] Tek tıkla tanılama özeti
+- [x] Her bulgu için kanıt, öneri ve puan etkisi
+- [x] Kopyalanabilir raporda hassas veri maskeleme
+- [ ] Teknisyen notları
+- [ ] Müşteri teslim raporu şablonu ve HTML/PDF dışa aktarma
+- [ ] Cihaz türüne göre genişletilmiş güvenli öneriler
 
-**Çıkış ölçütü:** Üretilen önerilerin kaynağı ve gerekçesi kullanıcıya açıkça
-gösterilmeli.
+**Beta.1 çıkış ölçütü:** Tamamlandı. Üretilen önerilerin ölçülen kanıtı,
+gerekçesi ve puan etkisi kullanıcıya açıkça gösteriliyor.
+
+**Beta.2 hedefi:** Teknisyen notları ile maskelenmiş müşteri teslim raporunu
+aynı tanılama sonucuna bağlamak.
 
 ## v0.7.0-beta — Güvenli yetkili işlemler
 
