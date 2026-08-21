@@ -2,7 +2,11 @@ from __future__ import annotations
 
 import unittest
 
-from app_v2.services.health_service import evaluate_health, report_text
+from app_v2.services.health_service import (
+    customer_report_html,
+    evaluate_health,
+    report_text,
+)
 
 
 def healthy_data() -> dict[str, object]:
@@ -32,6 +36,8 @@ class HealthServiceTests(unittest.TestCase):
         self.assertEqual(report.critical_count, 0)
         self.assertEqual(report.warning_count, 0)
         self.assertEqual(report.good_count, 7)
+        self.assertEqual(report.device_type, "Dizüstü / taşınabilir cihaz")
+        self.assertEqual(len(report.device_recommendations), 3)
         self.assertTrue(all(item.evidence for item in report.findings))
         self.assertTrue(all(item.recommendation for item in report.findings))
 
@@ -121,6 +127,38 @@ class HealthServiceTests(unittest.TestCase):
         self.assertEqual(report.score, 100)
         self.assertTrue(any(item.title == "C: disk alanı" for item in report.findings))
         self.assertTrue(any(item.title == "Tek disk" for item in report.findings))
+
+    def test_device_profile_changes_recommendations(self) -> None:
+        laptop = healthy_data()
+        laptop["device_type"] = "Laptop"
+        desktop = healthy_data()
+        desktop["device_type"] = "Desktop"
+        desktop["battery"] = None
+
+        laptop_report = evaluate_health(laptop)
+        desktop_report = evaluate_health(desktop)
+
+        self.assertTrue(laptop_report.device_type.startswith("Dizüstü"))
+        self.assertTrue(desktop_report.device_type.startswith("Masaüstü"))
+        self.assertNotEqual(
+            laptop_report.device_recommendations,
+            desktop_report.device_recommendations,
+        )
+
+    def test_customer_html_masks_notes_and_escapes_markup(self) -> None:
+        report = evaluate_health(healthy_data())
+
+        html = customer_report_html(
+            report,
+            "Müşteri: user@example.com\n<script>alert('x')</script>",
+        )
+
+        self.assertIn("IT Toolkit Müşteri Teslim Raporu", html)
+        self.assertIn("&lt;E-POSTA&gt;", html)
+        self.assertNotIn("user@example.com", html)
+        self.assertNotIn("<script>", html)
+        self.assertIn("Teknisyen notları", html)
+        self.assertIn("Cihaza özel güvenli öneriler", html)
 
 
 if __name__ == "__main__":

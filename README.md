@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img alt="Sürüm" src="https://img.shields.io/badge/sürüm-v0.6.0--beta.1-4C8DFF">
+  <img alt="Sürüm" src="https://img.shields.io/badge/sürüm-v0.6.0--beta.2-4C8DFF">
   <img alt="Platform" src="https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-5CD6FF">
   <img alt="Python" src="https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white">
   <img alt="PySide6" src="https://img.shields.io/badge/arayüz-PySide6-41CD52?logo=qt&logoColor=white">
@@ -46,6 +46,7 @@ bu sürümün parçası değildir.
 - Açıklanabilir 0–100 sağlık puanı ve önem seviyeli akıllı tanılama
 - Disk, bellek, pil, Windows Update ve yeniden başlatma kontrolleri
 - Her bulgu için yerel kanıt, güvenli öneri ve puan etkisi
+- Cihaz türüne özel öneriler, teknisyen notları ve HTML/PDF müşteri raporu
 - Dokuz araç modülü altında 64 işlem ve merkezi Görev Merkezi
 - 32 yazılım için resmi `winget` veya üretici kaynağı
 - Global araç arama ve bağlama göre gruplandırılmış işlemler
@@ -59,6 +60,7 @@ bu sürümün parçası değildir.
 - Görev çıktısını panoya kopyalama ve UTF-8 rapor olarak dışa aktarma
 - Dönen yerel hata günlüğü ve paylaşım öncesi hassas veri maskeleme
 - Uygulama içinden önceden doldurulan GitHub geri bildirim formu
+- GitHub Releases üzerinden sürüm denetimi, SHA-256 doğrulama ve güvenli güncelleme
 - Yönetici yetkisi durumu ve kritik işlemler için açık uyarılar
 - Windows 10/11 ile uyumlu tek dosyalık taşınabilir EXE
 
@@ -79,18 +81,21 @@ bu sürümün parçası değildir.
 | E-Posta / Outlook | Profil yönetimi, güvenli mod, arşiv ve resmi destek |
 | Windows ISO / USB | Resmi Microsoft ISO, Rufus/Fido ve lisans durumu araçları |
 | Geri Bildirim | Maskelenmiş hata günlüğü ve GitHub issue gönderim ekranı |
+| Güncellemeler | GitHub sürüm denetimi, sürüm notları ve doğrulanmış EXE güncellemesi |
 
 ## Mimari
 
 ```text
 main_v2.py
 └── app_v2/
-    ├── main_window.py       # Ana pencere, menü ve klavye kısayolları
+    ├── main_window.py       # Ana pencere, menü, güncelleme bildirimi ve kısayollar
+    ├── update_dialog.py     # Güncelleme denetimi, indirme ve yeniden başlatma akışı
     ├── command_palette.py   # Ctrl+K araç arama ve çalıştırma paleti
     ├── pages/               # Modül ekranları
     │   └── tasks.py         # Görev Merkezi ve canlı çıktı arayüzü
     ├── services/            # Komut, tercih, ayar ve sistem izleme servisleri
-    │   └── task_manager.py  # Süreç, iptal ve kalıcı geçmiş yönetimi
+    │   ├── task_manager.py  # Süreç, iptal ve kalıcı geçmiş yönetimi
+    │   └── update_service.py # GitHub Release ve SHA-256 güncelleme servisi
     ├── registry.py          # Araç ve paket tanımları
     ├── widgets.py           # Ortak arayüz bileşenleri
     ├── icons.py             # SVG ikon sistemi
@@ -140,6 +145,11 @@ Alternatif olarak `Baslat_v2.bat` dosyasını çalıştırabilirsiniz.
 Derleme sonucu `dist/` klasörüne yazılır. GitHub’daki her yayın oluşturulduğunda
 Windows iş akışı aynı işlemi temiz bir ortamda tekrarlar ve EXE dosyasını
 Release varlığı olarak ekler.
+
+Taşınabilir EXE, sol menüdeki **Güncellemeler** düğmesinden yeni beta veya
+kararlı sürümleri denetleyebilir. İndirilen dosya, GitHub Release ile yayımlanan
+SHA-256 özeti doğrulanmadan çalışan uygulamanın yerine geçirilmez. Kaynaktan
+çalıştırılan uygulama kaynak dosyalarını otomatik değiştirmez.
 
 ## Sürüm politikası
 

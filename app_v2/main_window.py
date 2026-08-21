@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from PySide6.QtCore import QSize, Qt, QTimer
+from PySide6.QtCore import QSize, Qt, QThreadPool, QTimer
 from PySide6.QtGui import QCloseEvent, QKeySequence, QResizeEvent, QShortcut
 from PySide6.QtWidgets import (
     QFrame,
@@ -38,8 +38,11 @@ from app_v2.registry import ToolAction
 from app_v2.services.command_runner import is_running_as_admin
 from app_v2.services.error_logging import get_logger
 from app_v2.services.preferences import ToolPreferences
+from app_v2.services.system_monitor import FunctionWorker
 from app_v2.services.task_manager import ACTIVE_STATUSES, TaskManager
+from app_v2.services.update_service import ReleaseInfo, check_for_update
 from app_v2.theme import create_app_icon
+from app_v2.update_dialog import UpdateDialog
 from app_v2.widgets import ToastNotification
 
 
@@ -59,6 +62,9 @@ class MainWindow(QMainWindow):
         self.preferences = ToolPreferences(self)
         self.command_palette = CommandPalette(self.preferences, self)
         self.command_palette.action_requested.connect(self._run_search_result)
+        self._update_pool = QThreadPool.globalInstance()
+        self._update_workers: set[FunctionWorker] = set()
+        self._available_update: ReleaseInfo | None = None
 
         root = QWidget()
         root.setObjectName("AppRoot")
@@ -142,6 +148,7 @@ class MainWindow(QMainWindow):
             0,
         )
         self.show_page("dashboard")
+        QTimer.singleShot(3_500, self._check_updates_silently)
 
     def _build_sidebar(self) -> QFrame:
         sidebar = QFrame()
@@ -203,10 +210,12 @@ class MainWindow(QMainWindow):
             layout.addWidget(button)
 
         layout.addStretch()
-        progress = QLabel("V0.6 BETA • AKILLI TANILAMA")
-        progress.setObjectName("VersionPill")
-        progress.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        layout.addWidget(progress)
+        self.update_button = QPushButton("GÜNCELLEMELER • V0.6 BETA 2")
+        self.update_button.setObjectName("VersionPill")
+        self.update_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.update_button.setToolTip("GitHub üzerinden güncellemeleri denetle")
+        self.update_button.clicked.connect(self._open_update_dialog)
+        layout.addWidget(self.update_button)
         version = QLabel(f"Beta {__version__}\nEdiz Ege Mercan")
         version.setObjectName("BrandSubtitle")
         version.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -373,6 +382,38 @@ class MainWindow(QMainWindow):
         self.search.clear()
         self.search.blockSignals(False)
         self.show_page("feedback")
+
+    def _open_update_dialog(self) -> None:
+        dialog = UpdateDialog(self._available_update, self)
+        dialog.exec()
+
+    def _check_updates_silently(self) -> None:
+        worker = FunctionWorker(check_for_update)
+        self._update_workers.add(worker)
+
+        def completed(release: ReleaseInfo | None) -> None:
+            self._update_workers.discard(worker)
+            if not release:
+                return
+            self._available_update = release
+            self.update_button.setText(f"YENİ SÜRÜM • {release.tag}")
+            self.update_button.setProperty("updateAvailable", True)
+            self.update_button.style().unpolish(self.update_button)
+            self.update_button.style().polish(self.update_button)
+            self.toast.show_message(
+                "Güncelleme hazır",
+                f"{release.tag} indirilebilir.",
+                "success",
+            )
+            self._position_toast()
+
+        def failed(message: str) -> None:
+            self._update_workers.discard(worker)
+            get_logger().warning("Otomatik güncelleme denetimi: %s", message)
+
+        worker.signals.completed.connect(completed)
+        worker.signals.failed.connect(failed)
+        self._update_pool.start(worker)
 
     def _update_task_counts(
         self,

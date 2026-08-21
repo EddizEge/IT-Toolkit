@@ -81,7 +81,7 @@ sonuç üretecek biçimde düzeltmek.
 
 ## v0.6.0-beta.1 — Akıllı tanılama temeli
 
-**Durum:** Mevcut yayın
+**Durum:** Tamamlandı — 12 Ağustos 2026
 
 **Hedef:** Salt araç listesinden karar destek merkezine geçmek.
 
@@ -98,23 +98,25 @@ gerekçesi ve puan etkisi kullanıcıya açıkça gösteriliyor.
 
 ## v0.6.0-beta.2 — Raporlama ve geri bildirim
 
-**Durum:** Geliştiriliyor
+**Durum:** Mevcut yayın — 21 Ağustos 2026
 
 **Hedef:** Tanılama sonuçlarını teknisyen raporuna dönüştürmek ve sahadaki
 kullanıcılardan güvenli, sürümle ilişkilendirilmiş geri bildirim toplamak.
 
-- [ ] Teknisyen notları
-- [ ] Müşteri teslim raporu şablonu ve HTML/PDF dışa aktarma
-- [ ] Cihaz türüne göre genişletilmiş güvenli öneriler
+- [x] Teknisyen notları
+- [x] Müşteri teslim raporu şablonu ve HTML/PDF dışa aktarma
+- [x] Cihaz türüne göre genişletilmiş güvenli öneriler
 - [x] Dönen yerel hata günlüğü ve yakalanmayan hata kaydı
 - [x] Paylaşım öncesi hassas veri maskeleme ve önizleme
 - [x] Uygulama içi GitHub geri bildirim ekranı
 - [x] Önceden doldurulan GitHub issue formu ve panoya güvenli rapor
 - [x] Her sürüm yükseltmesinde zorunlu açık feedback kontrolü
+- [x] GitHub Releases üzerinden uygulama içi güncelleme denetimi
+- [x] SHA-256 doğrulamalı indirme ve onaylı yeniden başlatma akışı
 
-**Çıkış ölçütü:** Teknisyen aynı tanılama sonucuna not ve müşteri raporu
-ekleyebilmeli; kullanıcılar hassas verileri maskelenmiş hata/öneri raporunu
-GitHub üzerinden iletebilmeli ve açık feedback her yayın öncesi incelenmeli.
+**Çıkış ölçütü:** Tamamlandı. Teknisyen aynı tanılama sonucuna not ve müşteri
+raporu ekleyebiliyor; kullanıcılar maskelenmiş hata/öneri raporunu GitHub
+üzerinden iletebiliyor ve doğrulanmış yeni sürümü uygulama içinden kurabiliyor.
 
 ## v0.7.0-beta — Güvenli yetkili işlemler
 
@@ -148,7 +150,6 @@ doğrulanmalı.
 
 **Hedef:** v1.0 öncesi özellik dondurma ve dağıtım hazırlığı.
 
-- Uygulama içi güncelleme denetimi
 - Taşınabilir ve kurulumlu paket seçenekleri
 - Kod imzalama altyapısı
 - Eksiksiz kullanıcı ve teknisyen belgeleri

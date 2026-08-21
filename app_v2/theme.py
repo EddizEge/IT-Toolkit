@@ -630,7 +630,7 @@ def build_stylesheet() -> str:
         padding: 3px 7px;
     }}
 
-    QLabel#VersionPill {{
+    QLabel#VersionPill, QPushButton#VersionPill {{
         background: #17253A;
         border: 1px solid #2A456B;
         border-radius: 8px;
@@ -639,6 +639,17 @@ def build_stylesheet() -> str:
         font-weight: 700;
         letter-spacing: 0.8px;
         padding: 4px 8px;
+    }}
+
+    QPushButton#VersionPill:hover {{
+        background: #203553;
+        border-color: #3A6396;
+    }}
+
+    QPushButton#VersionPill[updateAvailable="true"] {{
+        background: #193329;
+        border-color: #2E6A50;
+        color: #6EE0AD;
     }}
 
     QLabel#StatusBadge[status="on"] {{

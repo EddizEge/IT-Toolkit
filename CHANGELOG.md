@@ -5,14 +5,21 @@ izler ve proje [SemVer](https://semver.org/) kullanır.
 
 ## [Yayınlanmadı]
 
-### Planlanan
+Bir sonraki sürüm için henüz yayıma hazır değişiklik yok.
 
-- Akıllı Tanılama sonuçlarına bağlı teknisyen notları
-- Hassas verileri maskeleyen HTML/PDF müşteri teslim raporu
-- Cihaz türüne göre genişletilmiş güvenli öneriler
+## [0.6.0-beta.2] - 2026-08-21
 
 ### Eklendi
 
+- GitHub Releases üzerinden beta ve kararlı sürümleri denetleyen güncelleme
+  penceresi
+- GitHub Release varlığındaki SHA-256 özetini zorunlu doğrulayan indirme akışı
+- Taşınabilir EXE için kullanıcı onaylı değiştirme, yedekleme ve yeniden
+  başlatma mekanizması
+- Akıllı Tanılama sonucuna bağlı teknisyen notları
+- Cihaz türüne özel güvenli kullanım önerileri
+- Maskelenmiş teknisyen notları ve bulgular içeren HTML/PDF müşteri teslim
+  raporu
 - Uygulama başlangıcı, kapanışı, yakalanmayan hatalar ve başarısız görevler için
   dönen yerel hata günlüğü
 - Uygulama içi Geri Bildirim ve Hata Günlüğü ekranı
@@ -27,6 +34,8 @@ izler ve proje [SemVer](https://semver.org/) kullanır.
 - README yayın kanalı rozeti mevcut beta aşamasını gösterecek şekilde düzeltildi
 - Her sürüm yükseltmesinden önce açık uygulama geri bildirimlerinin incelenmesi
   zorunlu yayın adımı yapıldı
+- Güncelleme denetimi açılıştan sonra arayüzü engellemeden çalışıyor; yeni sürüm
+  olduğunda sol menüde görünür bildirim gösteriliyor
 
 ### Güvenlik
 
@@ -34,12 +43,16 @@ izler ve proje [SemVer](https://semver.org/) kullanır.
   anahtarı ve yaygın gizli anahtar alanları otomatik maskeleniyor
 - GitHub erişim anahtarı uygulamaya gömülmüyor; son gönderim kullanıcının kendi
   GitHub oturumunda açık onayla yapılıyor
+- Kaynaktan çalıştırma modunda otomatik dosya değiştirme yapılmıyor
+- İndirilen EXE, beklenen SHA-256 özeti eşleşmeden çalıştırılmıyor
 
 ### Kalite
 
-- Hassas veri maskeleme, dönen günlük yazımı, GitHub alan doldurma ve bağlantı
-  uzunluğu sınırı için 6 yeni regresyon testi eklendi
-- Toplam 35 otomatik test ve 1080×700 geri bildirim ekranı doğrulaması tamamlandı
+- Sürüm karşılaştırma, yayın seçimi, doğru varlık seçimi, SHA-256 doğrulaması ve
+  değiştirme betiği için 7 güncelleme regresyon testi eklendi
+- Cihaz profili ve maskelenmiş müşteri raporu senaryoları test edildi
+- Toplam 44 otomatik test; 1080×700 arayüz ve iki sayfalık A4 PDF görsel
+  doğrulaması tamamlandı
 
 ## [0.6.0-beta.1] - 2026-08-12
 
@@ -186,7 +199,8 @@ izler ve proje [SemVer](https://semver.org/) kullanır.
   çıkarıldı
 - Güvenilir olmayan indirme bağlantıları kaldırıldı
 
-[Yayınlanmadı]: https://github.com/EddizEge/IT-Toolkit/compare/v0.6.0-beta.1...HEAD
+[Yayınlanmadı]: https://github.com/EddizEge/IT-Toolkit/compare/v0.6.0-beta.2...HEAD
+[0.6.0-beta.2]: https://github.com/EddizEge/IT-Toolkit/compare/v0.6.0-beta.1...v0.6.0-beta.2
 [0.6.0-beta.1]: https://github.com/EddizEge/IT-Toolkit/compare/v0.5.1-hotfix.1...v0.6.0-beta.1
 [0.5.1-hotfix.1]: https://github.com/EddizEge/IT-Toolkit/compare/v0.5.0-preview.1...v0.5.1-hotfix.1
 [0.5.0-preview.1]: https://github.com/EddizEge/IT-Toolkit/compare/v0.4.0-preview.1...v0.5.0-preview.1

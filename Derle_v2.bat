@@ -17,8 +17,8 @@ if errorlevel 1 (
     exit /b 1
 )
 
-set /p VER="Surum etiketi (varsayilan: v0.6.0-beta.1): "
-if "%VER%"=="" set VER=v0.6.0-beta.1
+set /p VER="Surum etiketi (varsayilan: v0.6.0-beta.2): "
+if "%VER%"=="" set VER=v0.6.0-beta.2
 
 set "APP_NAME=IT_Toolkit_%VER%"
 taskkill /F /IM "%APP_NAME%.exe" /T >nul 2>&1

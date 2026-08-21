@@ -5,10 +5,13 @@ import subprocess
 import time
 from dataclasses import asdict, dataclass
 from datetime import datetime
+from html import escape
 from typing import Any, Literal
 
 import psutil
 
+from app_v2 import __version__
+from app_v2.services.error_logging import sanitize_text
 from app_v2.services.system_monitor import _run_powershell
 
 Severity = Literal["good", "info", "warning", "critical"]
@@ -32,6 +35,8 @@ class HealthReport:
     score: int
     label: str
     summary: str
+    device_type: str
+    device_recommendations: tuple[str, ...]
     findings: tuple[HealthFinding, ...]
 
     @property
@@ -52,6 +57,8 @@ class HealthReport:
             "score": self.score,
             "label": self.label,
             "summary": self.summary,
+            "device_type": self.device_type,
+            "device_recommendations": list(self.device_recommendations),
             "findings": [asdict(item) for item in self.findings],
         }
 
@@ -91,8 +98,36 @@ def _records(value: Any) -> list[dict[str, Any]]:
     return []
 
 
+def _device_profile(data: dict[str, Any]) -> tuple[str, tuple[str, ...]]:
+    raw_type = str(data.get("device_type") or "").casefold()
+    battery = data.get("battery")
+    if any(marker in raw_type for marker in ("laptop", "notebook", "portable")):
+        device_type = "Dizüstü / taşınabilir cihaz"
+    elif any(marker in raw_type for marker in ("desktop", "tower", "workstation")):
+        device_type = "Masaüstü / sabit sistem"
+    elif battery:
+        device_type = "Dizüstü / taşınabilir cihaz"
+    else:
+        device_type = "Masaüstü / sabit sistem"
+
+    if device_type.startswith("Dizüstü"):
+        recommendations = (
+            "Havalandırma kanallarını kapatmayın ve cihazı yumuşak yüzeyde yoğun yük altında kullanmayın.",
+            "Pil şişmesi, aşırı ısınma veya ani kapanma görülürse cihazı kullanmayı bırakıp yetkili servise başvurun.",
+            "Uzun süre prizde kullanımda üreticinin resmi şarj sınırı özelliği varsa etkinleştirmeyi değerlendirin.",
+        )
+    else:
+        recommendations = (
+            "Kritik veriler için cihazdan ayrı en az bir güncel yedek bulundurun.",
+            "Kasa hava akışını ve toz birikimini düzenli aralıklarla fiziksel olarak kontrol edin.",
+            "Elektrik kesintilerinin sık olduğu ortamlarda uygun kapasiteli bir UPS kullanmayı değerlendirin.",
+        )
+    return device_type, recommendations
+
+
 def evaluate_health(data: dict[str, Any]) -> HealthReport:
     findings: list[HealthFinding] = []
+    device_type, device_recommendations = _device_profile(data)
 
     volumes = _records(data.get("volumes"))
     if not volumes:
@@ -384,6 +419,8 @@ def evaluate_health(data: dict[str, Any]) -> HealthReport:
         score=score,
         label=_score_label(score),
         summary=_report_summary(score, critical_count, warning_count),
+        device_type=device_type,
+        device_recommendations=device_recommendations,
         findings=tuple(findings),
     )
 
@@ -443,12 +480,26 @@ def _collect_windows_health() -> dict[str, Any]:
         (Test-Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending') -or
         (Test-Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired')
     )
+    $deviceType = 'Desktop'
+    try {
+        $chassis = @(
+            (Get-CimInstance Win32_SystemEnclosure -ErrorAction Stop |
+                Select-Object -First 1).ChassisTypes
+        )
+        $portableTypes = @(8, 9, 10, 11, 12, 14, 18, 21, 30, 31, 32)
+        if (@($chassis | Where-Object { $_ -in $portableTypes }).Count -gt 0) {
+            $deviceType = 'Laptop'
+        }
+    } catch {
+        if ($battery) { $deviceType = 'Laptop' }
+    }
     [ordered]@{
         volumes = $volumes
         physical_disks = $physical
         battery = $battery
         last_update_days = $lastUpdateDays
         reboot_required = $rebootRequired
+        device_type = $deviceType
     } | ConvertTo-Json -Depth 5 -Compress
     """
     output = _run_powershell(script, timeout=30)
@@ -469,6 +520,7 @@ def collect_health_data() -> dict[str, Any]:
         "battery": None,
         "last_update_days": None,
         "reboot_required": None,
+        "device_type": "",
     }
     try:
         data.update(_collect_windows_health())
@@ -503,13 +555,15 @@ def collect_health_report() -> HealthReport:
     return evaluate_health(collect_health_data())
 
 
-def report_text(report: HealthReport) -> str:
+def report_text(report: HealthReport, technician_notes: str = "") -> str:
+    safe_notes = sanitize_text(technician_notes.strip())
     lines = [
         "IT Toolkit Sağlık Tanılama Raporu",
         "=" * 36,
         f"Tarih: {report.generated_at}",
         f"Sağlık puanı: {report.score}/100 ({report.label})",
         f"Özet: {report.summary}",
+        f"Cihaz türü: {report.device_type}",
         "",
     ]
     labels = {
@@ -528,4 +582,94 @@ def report_text(report: HealthReport) -> str:
                 "",
             )
         )
+    lines.extend(
+        (
+            "Cihaza özel güvenli öneriler",
+            "-" * 30,
+            *(f"- {item}" for item in report.device_recommendations),
+            "",
+        )
+    )
+    if safe_notes:
+        lines.extend(
+            (
+                "Teknisyen notları",
+                "-" * 30,
+                safe_notes,
+                "",
+            )
+        )
     return "\n".join(lines).rstrip() + "\n"
+
+
+def customer_report_html(
+    report: HealthReport,
+    technician_notes: str = "",
+) -> str:
+    safe_notes = sanitize_text(technician_notes.strip())
+    severity_labels = {
+        "critical": ("Kritik", "#B4232F", "#FDECEE"),
+        "warning": ("Uyarı", "#8A5A00", "#FFF4D6"),
+        "info": ("Bilgi", "#245A9A", "#EAF3FF"),
+        "good": ("İyi", "#16734A", "#E8F7F0"),
+    }
+    finding_rows: list[str] = []
+    for index, finding in enumerate(report.findings):
+        label, color, background = severity_labels[finding.severity]
+        impact = f"−{finding.deduction} puan" if finding.deduction else "Puan etkisi yok"
+        if index and index % 4 == 0:
+            finding_rows.append("<div class='page-break'></div>")
+        finding_rows.append(
+            "<table class='finding' width='100%' cellspacing='0'><tr><td>"
+            f"<h3 style='font-size:16px;margin:0 0 8px 0'>{escape(finding.title)} "
+            f"<span style='color:{color};background:{background}'>[{label}]</span></h3>"
+            f"<p>{escape(finding.summary)}</p>"
+            f"<p><b>Kanıt:</b> {escape(finding.evidence)}</p>"
+            f"<p><b>Öneri:</b> {escape(finding.recommendation)}</p>"
+            f"<small>{escape(finding.category)} • {impact}</small>"
+            "</td></tr></table><div class='finding-space'>&nbsp;</div>"
+        )
+    device_items = "".join(
+        f"<li>{escape(item)}</li>" for item in report.device_recommendations
+    )
+    notes_html = (
+        "<h2>Teknisyen notları</h2>"
+        f"<div class='notes'>{escape(safe_notes).replace(chr(10), '<br>')}</div>"
+        if safe_notes
+        else "<h2>Teknisyen notları</h2><div class='notes muted'>Not eklenmedi.</div>"
+    )
+    return f"""<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>IT Toolkit Müşteri Teslim Raporu</title>
+<style>
+@page {{ size: A4; margin: 18mm; }}
+body {{ font-family: "Segoe UI", Arial, sans-serif; color:#172033; margin:0; line-height:1.45; }}
+h1 {{ color:#174EA6; margin-bottom:4px; }}
+h2 {{ color:#243B64; margin-top:24px; border-bottom:1px solid #D9E2F0; padding-bottom:6px; }}
+.meta {{ color:#5D6A7B; margin-bottom:18px; }}
+.score {{ background:#EEF4FF; border:1px solid #BFD3F4; border-radius:12px; padding:18px; }}
+.finding {{ border:1px solid #D9E2F0; page-break-inside:avoid; }}
+.finding td {{ padding:12px; }}
+.finding-space {{ font-size:8px; }}
+.page-break {{ page-break-before:always; }}
+.finding p {{ margin:7px 0; }}
+.finding small, .muted {{ color:#6B778A; }}
+.notes {{ background:#F7F9FC; border:1px solid #D9E2F0; border-radius:10px; padding:14px; min-height:46px; }}
+footer {{ margin-top:28px; color:#7A8699; font-size:11px; border-top:1px solid #D9E2F0; padding-top:9px; }}
+</style>
+</head>
+<body>
+<h1>IT Toolkit Müşteri Teslim Raporu</h1>
+<div class="meta">Tarih: {escape(report.generated_at)} • Cihaz: {escape(report.device_type)}</div>
+<div class="score"><h2 style="font-size:28px;color:#174EA6;border:0;margin:0 0 8px 0">{report.score}/100 — {escape(report.label)}</h2><p>{escape(report.summary)}</p></div>
+<h2>Tanılama bulguları</h2>
+{''.join(finding_rows)}
+<h2>Cihaza özel güvenli öneriler</h2>
+<ul>{device_items}</ul>
+{notes_html}
+<footer>IT Toolkit v{escape(__version__)} • Yönet • Tanıla • Çöz</footer>
+</body>
+</html>
+"""

@@ -8,7 +8,7 @@ için güncel teknik rehberdir. Kod değişikliğine başlamadan önce bu dosyay
 
 - **Ürün:** IT Toolkit — Windows Yönetim Merkezi
 - **Geliştirici:** Ediz Ege Mercan
-- **Mevcut yayın:** `v0.6.0-beta.1`
+- **Mevcut yayın:** `v0.6.0-beta.2`
 - **Hedef sistem:** Windows 10 ve Windows 11
 - **Dil:** Python 3.12+
 - **Arayüz:** PySide6 / Qt Widgets
@@ -35,13 +35,15 @@ IT-Toolkit/
 │   ├── registry.py             # Araç, anahtar ve paket kayıtları
 │   ├── widgets.py              # Ortak Qt bileşenleri
 │   ├── dialogs.py              # Kurulum ve Wi-Fi QR pencereleri
+│   ├── update_dialog.py        # Sürüm denetimi, indirme ve yeniden başlatma
 │   ├── icons.py                # Kod içinde tutulan SVG ikonlar
 │   ├── theme.py                # Renk, tipografi ve QSS tema sistemi
 │   ├── pages/                  # Uygulama ekranları
 │   │   └── feedback.py         # GitHub geri bildirim ve günlük önizleme ekranı
 │   └── services/               # Görev, komut, tercih, sağlık ve sistem servisleri
 │       ├── error_logging.py    # Dönen yerel log ve hassas veri maskeleme
-│       └── feedback_service.py # Rapor metni ve GitHub issue bağlantısı
+│       ├── feedback_service.py # Rapor metni ve GitHub issue bağlantısı
+│       └── update_service.py   # GitHub Release, SHA-256 ve EXE değiştirme
 ├── tests/                      # unittest tabanlı otomatik testler
 ├── assets/brand/               # Logo ve Windows uygulama ikonları
 ├── docs/                       # Marka, ekran görüntüsü ve sürüm notları
@@ -112,6 +114,8 @@ açıklanabilir 0–100 sağlık puanı ve önem seviyeli bulgular üretir.
 - Her sağlık bulgusu kanıt, öneri ve puan etkisini açıklamalıdır.
 - Dışa aktarılan raporlarda kullanıcı adı, IP ve benzeri hassas veriler
   maskelenmelidir.
+- Müşteri raporu HTML ve PDF olarak aynı güvenli içerikten üretilmeli; kartlar
+  sayfalar arasında bölünmemeli ve teknisyen notları da maskelenmelidir.
 
 ### Yerel kullanıcı verileri
 
@@ -136,12 +140,32 @@ gömülmemelidir.
   yönlendirilmelidir.
 - Geri bildirim ekranı hata oluşmasa da üst çubuktan erişilebilir kalmalıdır.
 
+### Uygulama güncellemeleri
+
+`update_service.py`, resmi GitHub Releases API’sinden yayın listesini alır;
+çalışan beta sürümleri yeni ön sürümleri, kararlı sürümler yalnızca kararlı
+yayınları görür. `update_dialog.py` durum, sürüm notu, indirme ilerlemesi ve
+kullanıcı onayını yönetir.
+
+- Güncelleme kaynağı yalnızca `EddizEge/IT-Toolkit` GitHub Release varlıklarıdır.
+- Dosya adı etikete tam uymalıdır: `IT_Toolkit_<etiket>.exe`.
+- Release varlığında `sha256:` özeti veya eşleşen `.sha256` dosyası yoksa
+  güncelleme reddedilmelidir.
+- SHA-256 doğrulaması geçmeden EXE çalıştırılmamalı veya mevcut dosyanın yerine
+  geçirilmemelidir.
+- Değiştirme işlemi mevcut EXE’nin yedeğini almalı ve hata durumunda geri
+  yüklemelidir.
+- Otomatik denetim arayüzü engellememeli; indirme ve yeniden başlatma kullanıcı
+  onayı olmadan yapılmamalıdır.
+- Kaynaktan çalıştırırken Python kaynakları otomatik değiştirilmemelidir.
+- GitHub erişim anahtarı veya kimlik bilgisi uygulamaya gömülmemelidir.
+
 ## Ekranlar
 
 | Ekran | Sorumluluk |
 | --- | --- |
 | Sistem Özeti | Canlı CPU, RAM, disk, donanım ve işletim sistemi özeti |
-| Akıllı Tanılama | Sağlık puanı, bulgular, kanıtlar ve öneriler |
+| Akıllı Tanılama | Sağlık puanı, bulgular, öneriler ve müşteri raporu |
 | Hızlı Erişim | Favoriler, son kullanılanlar ve hazır akışlar |
 | Görev Merkezi | Canlı çıktı, iptal, sonuç ve son 100 işlem |
 | Sistem Yönetimi | Temizlik, onarım, SMART, yazıcı ve geri yükleme |
@@ -153,6 +177,7 @@ gömülmemelidir.
 | E-Posta / Outlook | Profil, güvenli mod, arşiv ve resmi destek |
 | Windows ISO / USB | Resmi ISO, Rufus/Fido ve lisans durumu |
 | Geri Bildirim | Maskelenmiş hata günlüğü, rapor önizleme ve GitHub issue akışı |
+| Güncellemeler | GitHub sürüm denetimi, doğrulanmış indirme ve yeniden başlatma |
 
 ## Tasarım ve kullanıcı deneyimi kuralları
 
@@ -228,6 +253,10 @@ Bir sürüm tamamlanırken birlikte güncellenmesi gerekenler:
 
 Ayrıntılı yayın akışı için `RELEASING.md` izlenmelidir.
 
+Release varlıkları yüklendikten sonra bir önceki sürüm numarasıyla güncelleme
+denetimi çalıştırılmalı; yeni etiketin seçildiği, EXE’nin indirildiği ve
+SHA-256 doğrulamasının başarılı olduğu ayrıca doğrulanmalıdır.
+
 ### Zorunlu GitHub geri bildirim kontrolü
 
 Her sürüm numarası yükseltme çalışmasının başında ve GitHub Release
@@ -258,5 +287,6 @@ parçasıdır.
 - [ ] Testler ve lint başarılı.
 - [ ] Yeni hata yolları yerel günlüğe güvenli biçimde yansıyor.
 - [ ] Açık GitHub uygulama geri bildirimleri kontrol edildi.
+- [ ] Güncelleme varlık adı ve SHA-256 doğrulaması kontrol edildi.
 - [ ] İlgili belge ve sürüm notları güncel.
 - [ ] Çalışma alanındaki ilgisiz kullanıcı değişiklikleri korunuyor.

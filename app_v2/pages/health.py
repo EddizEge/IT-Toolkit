@@ -1,13 +1,19 @@
 from __future__ import annotations
 
 from datetime import datetime
+from pathlib import Path
 
 from PySide6.QtCore import Qt, QThreadPool, QTimer, Signal
+from PySide6.QtGui import QPageSize, QTextDocument
+from PySide6.QtPrintSupport import QPrinter
 from PySide6.QtWidgets import (
     QApplication,
+    QFileDialog,
     QFrame,
     QHBoxLayout,
     QLabel,
+    QMessageBox,
+    QPlainTextEdit,
     QProgressBar,
     QPushButton,
     QScrollArea,
@@ -15,10 +21,12 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from app_v2.services.error_logging import get_logger
 from app_v2.services.health_service import (
     HealthFinding,
     HealthReport,
     collect_health_report,
+    customer_report_html,
     report_text,
 )
 from app_v2.services.system_monitor import FunctionWorker
@@ -46,6 +54,9 @@ class HealthPage(QWidget):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
         root.addWidget(scroll)
 
         content = QWidget()
@@ -150,6 +161,68 @@ class HealthPage(QWidget):
         method_layout.addWidget(method_text, 1)
         layout.addWidget(method_panel)
 
+        report_panel = QFrame()
+        report_panel.setObjectName("Panel")
+        report_layout = QVBoxLayout(report_panel)
+        report_layout.setContentsMargins(20, 18, 20, 20)
+        report_layout.setSpacing(10)
+
+        report_header = QHBoxLayout()
+        report_heading = QVBoxLayout()
+        report_heading.setSpacing(3)
+        report_title = QLabel("Teknisyen notları ve müşteri teslim raporu")
+        report_title.setObjectName("SectionTitle")
+        report_subtitle = QLabel(
+            "Tanılama sonucuna not ekleyin; maskelenmiş HTML veya PDF raporu oluşturun."
+        )
+        report_subtitle.setObjectName("CardSubtitle")
+        report_subtitle.setWordWrap(True)
+        report_heading.addWidget(report_title)
+        report_heading.addWidget(report_subtitle)
+        report_header.addLayout(report_heading, 1)
+
+        self.html_button = QPushButton("HTML dışa aktar")
+        self.html_button.setObjectName("GhostButton")
+        self.html_button.setEnabled(False)
+        self.html_button.clicked.connect(self._export_html)
+        self.pdf_button = QPushButton("PDF dışa aktar")
+        self.pdf_button.setObjectName("PrimaryButton")
+        self.pdf_button.setEnabled(False)
+        self.pdf_button.clicked.connect(self._export_pdf)
+        report_layout.addLayout(report_header)
+        report_actions = QHBoxLayout()
+        report_actions.addStretch()
+        report_actions.addWidget(self.html_button)
+        report_actions.addWidget(self.pdf_button)
+        report_layout.addLayout(report_actions)
+
+        self.device_label = QLabel("Cihaz profili: Tanılama bekleniyor")
+        self.device_label.setObjectName("Badge")
+        self.device_label.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        report_layout.addWidget(self.device_label)
+
+        self.device_recommendations = QLabel(
+            "Cihaz türüne özel öneriler tanılama tamamlandığında gösterilir."
+        )
+        self.device_recommendations.setObjectName("CardSubtitle")
+        self.device_recommendations.setWordWrap(True)
+        self.device_recommendations.setMinimumHeight(72)
+        report_layout.addWidget(self.device_recommendations)
+
+        notes_label = QLabel("Teknisyen notları")
+        notes_label.setObjectName("Muted")
+        self.notes_input = QPlainTextEdit()
+        self.notes_input.setObjectName("FeedbackText")
+        self.notes_input.setPlaceholderText(
+            "Yapılan işlemler, gözlemler ve müşteriye iletilecek güvenli notlar…"
+        )
+        self.notes_input.setEnabled(False)
+        self.notes_input.setMinimumHeight(95)
+        self.notes_input.setMaximumHeight(145)
+        report_layout.addWidget(notes_label)
+        report_layout.addWidget(self.notes_input)
+        layout.addWidget(report_panel)
+
         findings_header = QHBoxLayout()
         findings_title = QLabel("Tanılama bulguları")
         findings_title.setObjectName("SectionTitle")
@@ -177,6 +250,9 @@ class HealthPage(QWidget):
         self._scanning = True
         self.scan_button.setEnabled(False)
         self.copy_button.setEnabled(False)
+        self.html_button.setEnabled(False)
+        self.pdf_button.setEnabled(False)
+        self.notes_input.setEnabled(False)
         self.scan_button.setText("Kontrol ediliyor…")
         self.scan_state.setText("Çalışıyor")
         self.scan_state.setProperty("status", "unknown")
@@ -205,6 +281,9 @@ class HealthPage(QWidget):
         self._report = report
         self.scan_button.setEnabled(True)
         self.copy_button.setEnabled(True)
+        self.html_button.setEnabled(True)
+        self.pdf_button.setEnabled(True)
+        self.notes_input.setEnabled(True)
         self.scan_button.setText("Tekrar tara")
         tone = self._score_tone(report.score)
         self.summary_panel.setProperty("tone", tone)
@@ -231,6 +310,13 @@ class HealthPage(QWidget):
         self.scan_state.setText("Tamamlandı")
         self.scan_state.setProperty("status", "on")
         self._refresh_property(self.scan_state)
+        self.device_label.setText(f"Cihaz profili: {report.device_type}")
+        self.device_recommendations.setText(
+            "\n".join(
+                f"• {recommendation}"
+                for recommendation in report.device_recommendations
+            )
+        )
 
         clear_layout(self.findings_layout)
         for finding in report.findings:
@@ -251,6 +337,9 @@ class HealthPage(QWidget):
     def _fail_scan(self, message: str) -> None:
         self._scanning = False
         self.scan_button.setEnabled(True)
+        self.html_button.setEnabled(False)
+        self.pdf_button.setEnabled(False)
+        self.notes_input.setEnabled(False)
         self.scan_button.setText("Yeniden dene")
         self.scan_state.setText("Başarısız")
         self.scan_state.setProperty("status", "off")
@@ -328,8 +417,86 @@ class HealthPage(QWidget):
     def _copy_report(self) -> None:
         if not self._report:
             return
-        QApplication.clipboard().setText(report_text(self._report))
+        QApplication.clipboard().setText(
+            report_text(self._report, self.notes_input.toPlainText())
+        )
         self.status_message.emit("Tanılama raporu panoya kopyalandı.", True)
+
+    def _export_html(self) -> None:
+        if not self._report:
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Müşteri teslim raporunu kaydet",
+            self._default_report_name(".html"),
+            "HTML Belgesi (*.html)",
+        )
+        if not path:
+            return
+        if not path.lower().endswith(".html"):
+            path += ".html"
+        try:
+            Path(path).write_text(
+                customer_report_html(
+                    self._report,
+                    self.notes_input.toPlainText(),
+                ),
+                encoding="utf-8",
+            )
+        except OSError as exc:
+            get_logger().exception("HTML müşteri raporu kaydedilemedi.")
+            QMessageBox.critical(self, "Rapor kaydedilemedi", str(exc))
+            return
+        self.task_manager.record_result(
+            "Müşteri teslim raporu",
+            "HTML müşteri teslim raporu kaydedildi.",
+            success=True,
+            category="Akıllı Tanılama",
+        )
+
+    def _export_pdf(self) -> None:
+        if not self._report:
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Müşteri teslim raporunu kaydet",
+            self._default_report_name(".pdf"),
+            "PDF Belgesi (*.pdf)",
+        )
+        if not path:
+            return
+        if not path.lower().endswith(".pdf"):
+            path += ".pdf"
+        try:
+            document = QTextDocument()
+            document.setHtml(
+                customer_report_html(
+                    self._report,
+                    self.notes_input.toPlainText(),
+                )
+            )
+            printer = QPrinter(QPrinter.PrinterMode.HighResolution)
+            printer.setOutputFormat(QPrinter.OutputFormat.PdfFormat)
+            printer.setOutputFileName(path)
+            printer.setPageSize(QPageSize(QPageSize.PageSizeId.A4))
+            document.print_(printer)
+            if not Path(path).is_file() or Path(path).stat().st_size == 0:
+                raise OSError("PDF dosyası oluşturulamadı.")
+        except OSError as exc:
+            get_logger().exception("PDF müşteri raporu kaydedilemedi.")
+            QMessageBox.critical(self, "Rapor kaydedilemedi", str(exc))
+            return
+        self.task_manager.record_result(
+            "Müşteri teslim raporu",
+            "PDF müşteri teslim raporu kaydedildi.",
+            success=True,
+            category="Akıllı Tanılama",
+        )
+
+    @staticmethod
+    def _default_report_name(suffix: str) -> str:
+        date = datetime.now().astimezone().strftime("%Y%m%d")
+        return f"IT_Toolkit_Musteri_Teslim_Raporu_{date}{suffix}"
 
     @staticmethod
     def _score_tone(score: int) -> str:

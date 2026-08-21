@@ -13,6 +13,7 @@ env/
 # Build outputs
 build/
 dist/
+tmp/
 *.spec
 
 # Editors and operating system
