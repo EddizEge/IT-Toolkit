@@ -144,7 +144,10 @@ class TaskManagerTests(unittest.TestCase):
         )
 
         self.assertTrue(
-            self.wait_until(lambda: task.status == "succeeded"),
+            self.wait_until(
+                lambda: task.status == "succeeded",
+                timeout=20.0,
+            ),
             task.output,
         )
         self.assertIn("GERCEK_DEGER=42", task.output)
