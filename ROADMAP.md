@@ -92,15 +92,29 @@ sonuç üretecek biçimde düzeltmek.
 - [x] Tek tıkla tanılama özeti
 - [x] Her bulgu için kanıt, öneri ve puan etkisi
 - [x] Kopyalanabilir raporda hassas veri maskeleme
-- [ ] Teknisyen notları
-- [ ] Müşteri teslim raporu şablonu ve HTML/PDF dışa aktarma
-- [ ] Cihaz türüne göre genişletilmiş güvenli öneriler
 
 **Beta.1 çıkış ölçütü:** Tamamlandı. Üretilen önerilerin ölçülen kanıtı,
 gerekçesi ve puan etkisi kullanıcıya açıkça gösteriliyor.
 
-**Beta.2 hedefi:** Teknisyen notları ile maskelenmiş müşteri teslim raporunu
-aynı tanılama sonucuna bağlamak.
+## v0.6.0-beta.2 — Raporlama ve geri bildirim
+
+**Durum:** Geliştiriliyor
+
+**Hedef:** Tanılama sonuçlarını teknisyen raporuna dönüştürmek ve sahadaki
+kullanıcılardan güvenli, sürümle ilişkilendirilmiş geri bildirim toplamak.
+
+- [ ] Teknisyen notları
+- [ ] Müşteri teslim raporu şablonu ve HTML/PDF dışa aktarma
+- [ ] Cihaz türüne göre genişletilmiş güvenli öneriler
+- [x] Dönen yerel hata günlüğü ve yakalanmayan hata kaydı
+- [x] Paylaşım öncesi hassas veri maskeleme ve önizleme
+- [x] Uygulama içi GitHub geri bildirim ekranı
+- [x] Önceden doldurulan GitHub issue formu ve panoya güvenli rapor
+- [x] Her sürüm yükseltmesinde zorunlu açık feedback kontrolü
+
+**Çıkış ölçütü:** Teknisyen aynı tanılama sonucuna not ve müşteri raporu
+ekleyebilmeli; kullanıcılar hassas verileri maskelenmiş hata/öneri raporunu
+GitHub üzerinden iletebilmeli ve açık feedback her yayın öncesi incelenmeli.
 
 ## v0.7.0-beta — Güvenli yetkili işlemler
 

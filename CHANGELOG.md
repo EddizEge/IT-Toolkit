@@ -7,8 +7,39 @@ izler ve proje [SemVer](https://semver.org/) kullanır.
 
 ### Planlanan
 
-- Açıklanabilir sistem sağlık puanı ve tanılama özeti
-- Güvenli geri alma ve otomatik geri yükleme noktası akışları
+- Akıllı Tanılama sonuçlarına bağlı teknisyen notları
+- Hassas verileri maskeleyen HTML/PDF müşteri teslim raporu
+- Cihaz türüne göre genişletilmiş güvenli öneriler
+
+### Eklendi
+
+- Uygulama başlangıcı, kapanışı, yakalanmayan hatalar ve başarısız görevler için
+  dönen yerel hata günlüğü
+- Uygulama içi Geri Bildirim ve Hata Günlüğü ekranı
+- Kategori, açıklama, yeniden üretme adımları ve tanılama verileriyle önceden
+  doldurulan GitHub issue formu
+- Geri bildirim raporunu panoya kopyalama ve yerel günlük klasörünü açma
+
+### Değiştirildi
+
+- Geliştirici ve agent rehberi güncel PySide6 mimarisi, güvenlik sınırları,
+  doğrulama komutları ve yayın süreciyle eşleştirildi
+- README yayın kanalı rozeti mevcut beta aşamasını gösterecek şekilde düzeltildi
+- Her sürüm yükseltmesinden önce açık uygulama geri bildirimlerinin incelenmesi
+  zorunlu yayın adımı yapıldı
+
+### Güvenlik
+
+- Paylaşılan hata kayıtlarında kullanıcı yolu, e-posta, IP, MAC adresi, ürün
+  anahtarı ve yaygın gizli anahtar alanları otomatik maskeleniyor
+- GitHub erişim anahtarı uygulamaya gömülmüyor; son gönderim kullanıcının kendi
+  GitHub oturumunda açık onayla yapılıyor
+
+### Kalite
+
+- Hassas veri maskeleme, dönen günlük yazımı, GitHub alan doldurma ve bağlantı
+  uzunluğu sınırı için 6 yeni regresyon testi eklendi
+- Toplam 35 otomatik test ve 1080×700 geri bildirim ekranı doğrulaması tamamlandı
 
 ## [0.6.0-beta.1] - 2026-08-12
 

@@ -1,0 +1,64 @@
+name: Uygulama geri bildirimi
+description: IT Toolkit içinden hazırlanan hata, öneri veya kullanılabilirlik raporu
+title: "[Uygulama Geri Bildirimi] "
+labels:
+  - feedback
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Teşekkürler. Bu form IT Toolkit içindeki Geri Bildirim ekranından otomatik doldurulabilir.
+        Parola, lisans anahtarı, müşteri verisi veya başka hassas bilgi paylaşmayın.
+  - type: input
+    id: category
+    attributes:
+      label: Kategori
+      placeholder: Uygulama hatası
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: IT Toolkit sürümü
+      placeholder: v0.6.0-beta.1
+    validations:
+      required: true
+  - type: textarea
+    id: windows_info
+    attributes:
+      label: Ortam
+      description: Uygulama sürümü ve kişisel bilgi içermeyen Windows özeti
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: Açıklama
+      description: Ne oldu, ne olmasını bekliyordunuz veya ne öneriyorsunuz?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Yeniden üretme adımları
+      description: Sorun tekrar ediyorsa izlediğiniz adımları yazın.
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Maskelenmiş tanılama ve hata günlüğü
+      description: Göndermeden önce kişisel veya hassas bilgi bulunmadığını kontrol edin.
+      render: text
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Gizlilik kontrolü
+      options:
+        - label: Paylaştığım içerikte parola, müşteri verisi veya başka hassas bilgi bulunmuyor.
+          required: true
+  - type: checkboxes
+    id: duplicate
+    attributes:
+      label: Tekrar kontrolü
+      options:
+        - label: Açık issue listesini kontrol ettim ve aynı bildirimi bulamadım.
+          required: true

@@ -21,6 +21,7 @@ from app_v2.command_palette import CommandPalette
 from app_v2.icons import monochrome_icon, navigation_icon
 from app_v2.pages.dashboard import DashboardPage
 from app_v2.pages.data import DataPage
+from app_v2.pages.feedback import FeedbackPage
 from app_v2.pages.health import HealthPage
 from app_v2.pages.iso import IsoPage
 from app_v2.pages.mail import MailPage
@@ -35,6 +36,7 @@ from app_v2.pages.tasks import TaskCenterPage
 from app_v2.pages.tools_page import ToolsPage
 from app_v2.registry import ToolAction
 from app_v2.services.command_runner import is_running_as_admin
+from app_v2.services.error_logging import get_logger
 from app_v2.services.preferences import ToolPreferences
 from app_v2.services.task_manager import ACTIVE_STATUSES, TaskManager
 from app_v2.theme import create_app_icon
@@ -117,6 +119,7 @@ class MainWindow(QMainWindow):
                 task_manager=self.task_manager,
                 preferences=self.preferences,
             ),
+            "feedback": FeedbackPage,
             "search": lambda: SearchPage(self.preferences),
         }
 
@@ -250,6 +253,12 @@ class MainWindow(QMainWindow):
         self.task_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.task_button.clicked.connect(self._open_task_center)
 
+        feedback_button = QPushButton("Geri Bildirim")
+        feedback_button.setObjectName("GhostButton")
+        feedback_button.setIcon(monochrome_icon("feedback"))
+        feedback_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        feedback_button.clicked.connect(self._open_feedback)
+
         palette_button = QPushButton("Komutlar  Ctrl+K")
         palette_button.setObjectName("GhostButton")
         palette_button.setIcon(monochrome_icon("search"))
@@ -263,6 +272,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(self.status_label)
         layout.addWidget(palette_button)
         layout.addWidget(self.task_button)
+        layout.addWidget(feedback_button)
         layout.addWidget(admin)
         return topbar
 
@@ -276,6 +286,8 @@ class MainWindow(QMainWindow):
             if isinstance(page, QuickAccessPage):
                 page.status_message.connect(self.show_status)
                 page.action_requested.connect(self._run_search_result)
+            if isinstance(page, FeedbackPage):
+                page.status_message.connect(self.show_status)
             if isinstance(page, SearchPage):
                 page.action_requested.connect(self._run_search_result)
             self._pages[key] = page
@@ -302,6 +314,7 @@ class MainWindow(QMainWindow):
             "office": "Microsoft Office",
             "mail": "E-Posta / Outlook",
             "iso": "Windows ISO / USB",
+            "feedback": "Geri Bildirim",
             "search": "Araç Arama",
         }
         self.context_label.setText(titles[key])
@@ -355,6 +368,12 @@ class MainWindow(QMainWindow):
         self.search.blockSignals(False)
         self.show_page("tasks")
 
+    def _open_feedback(self) -> None:
+        self.search.blockSignals(True)
+        self.search.clear()
+        self.search.blockSignals(False)
+        self.show_page("feedback")
+
     def _update_task_counts(
         self,
         running: int,
@@ -374,6 +393,8 @@ class MainWindow(QMainWindow):
         message: str,
         tone: str,
     ) -> None:
+        if tone == "danger":
+            get_logger().error("Görev hatası | %s | %s", title, message)
         self.toast.show_message(title, message, tone)
         self._position_toast()
 

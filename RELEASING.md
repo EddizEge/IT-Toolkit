@@ -13,15 +13,23 @@ Etiketler SemVer ön ekiyle oluşturulur:
 
 ## Yayın kontrol listesi
 
-1. `ROADMAP.md` kilometre taşını ve `CHANGELOG.md` tarihini güncelleyin.
-2. `app_v2/__init__.py` içindeki sürümü etiketle eşleştirin.
-3. Uygulamayı standart ve yönetici oturumunda açın.
-4. Ana modülleri, global aramayı ve uzun görev yürütmeyi kontrol edin.
-5. Temiz commit’i `main` dalına gönderin.
-6. İmzalı etiketi oluşturup gönderin.
-7. GitHub Release’i yayımlayın.
-8. Windows iş akışının EXE’yi Release’e eklediğini doğrulayın.
-9. EXE’yi temiz bir Windows 10/11 ortamında duman testinden geçirin.
+1. GitHub’da açık `[Uygulama Geri Bildirimi]` issue’larını inceleyip
+   sınıflandırın; kritik sorunlar açıkken yayın yapmayın.
+2. `ROADMAP.md` kilometre taşını ve `CHANGELOG.md` tarihini güncelleyin.
+3. `app_v2/__init__.py` içindeki sürümü etiketle eşleştirin.
+4. Çözülen feedback issue numaralarını ve ertelenen bilinen sorunları sürüm
+   notuna ekleyin.
+5. Uygulamayı standart ve yönetici oturumunda açın.
+6. Ana modülleri, global aramayı, hata günlüğünü, GitHub geri bildirim
+   bağlantısını ve uzun görev yürütmeyi kontrol edin.
+7. Temiz commit’i `main` dalına gönderin.
+8. İmzalı etiketi oluşturup gönderin.
+9. GitHub Release’i yayımlayın.
+10. Windows iş akışının EXE’yi Release’e eklediğini doğrulayın.
+11. EXE’yi temiz bir Windows 10/11 ortamında duman testinden geçirin.
+
+Geri bildirim kontrol bağlantısı:
+`https://github.com/EddizEge/IT-Toolkit/issues?q=is%3Aissue+is%3Aopen+%22%5BUygulama+Geri+Bildirimi%5D%22`
 
 ## Yerel komutlar
 

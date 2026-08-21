@@ -14,7 +14,7 @@
   <img alt="Platform" src="https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-5CD6FF">
   <img alt="Python" src="https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white">
   <img alt="PySide6" src="https://img.shields.io/badge/arayüz-PySide6-41CD52?logo=qt&logoColor=white">
-  <img alt="Durum" src="https://img.shields.io/badge/durum-preview-F2A93B">
+  <img alt="Durum" src="https://img.shields.io/badge/durum-beta-5CD6FF">
 </p>
 
 <p align="center">
@@ -57,6 +57,8 @@ bu sürümün parçası değildir.
 - Canlı görev çıktısı, ilerleme, iptal ve son 100 işlemlik yerel geçmiş
 - PowerShell ve çok adımlı görevlerde güvenilir hata/çıkış kodu aktarımı
 - Görev çıktısını panoya kopyalama ve UTF-8 rapor olarak dışa aktarma
+- Dönen yerel hata günlüğü ve paylaşım öncesi hassas veri maskeleme
+- Uygulama içinden önceden doldurulan GitHub geri bildirim formu
 - Yönetici yetkisi durumu ve kritik işlemler için açık uyarılar
 - Windows 10/11 ile uyumlu tek dosyalık taşınabilir EXE
 
@@ -76,6 +78,7 @@ bu sürümün parçası değildir.
 | Microsoft Office | Resmi kurulum, onarım, güvenli mod ve lisans tanılama |
 | E-Posta / Outlook | Profil yönetimi, güvenli mod, arşiv ve resmi destek |
 | Windows ISO / USB | Resmi Microsoft ISO, Rufus/Fido ve lisans durumu araçları |
+| Geri Bildirim | Maskelenmiş hata günlüğü ve GitHub issue gönderim ekranı |
 
 ## Mimari
 
@@ -105,8 +108,9 @@ nedeniyle harici görev olarak işaretlenir.
 
 Hazır Windows sürümünü
 [Releases](https://github.com/EddizEge/IT-Toolkit/releases) sayfasından
-indirebilirsiniz. `preview` etiketli sürümler erken test içindir ve Windows
-SmartScreen, imzalanmamış EXE için uyarı gösterebilir.
+indirebilirsiniz. `preview`, `beta` ve `rc` etiketli sürümler kararlılık öncesi
+test yayınlarıdır. Windows SmartScreen, imzalanmamış EXE için uyarı
+gösterebilir.
 
 ## Kaynaktan çalıştırma
 

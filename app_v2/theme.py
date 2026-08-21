@@ -463,13 +463,17 @@ def build_stylesheet() -> str:
         color: #A9C8FF;
     }}
 
-    QPlainTextEdit#TaskOutput {{
+    QPlainTextEdit#TaskOutput, QPlainTextEdit#FeedbackText {{
         background: #090D13;
         border: 1px solid {COLORS["border_soft"]};
         border-radius: 9px;
         color: #C8D2DF;
         padding: 10px;
         selection-background-color: #284B7E;
+    }}
+
+    QPlainTextEdit#FeedbackText:focus {{
+        border: 1px solid {COLORS["primary"]};
     }}
 
     QSplitter::handle {{
