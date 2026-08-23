@@ -120,7 +120,7 @@ raporu ekleyebiliyor; kullanıcılar maskelenmiş hata/öneri raporunu GitHub
 
 ## v0.7.0-beta — Güvenli yetkili işlemler
 
-**Durum:** Geliştiriliyor — Aşama A, B ve C tamamlandı (23 Ağustos 2026)
+**Durum:** Geliştiriliyor — Aşama A–D tamamlandı (24 Ağustos 2026)
 
 **Hedef:** Yönetici işlemlerini daha kontrollü ve geri alınabilir yapmak.
 
@@ -128,8 +128,12 @@ raporu ekleyebiliyor; kullanıcılar maskelenmiş hata/öneri raporunu GitHub
 - [x] Gerçek hedefi ve yetkiyi taşıyan parametreye duyarlı işlem planı
 - [x] `plan_id` bağlantılı, dönen ve hassas veri içermeyen denetim günlüğü
 - [x] Görev Merkezi’nde denetim kimliği görünürlüğü
-- [ ] Uygun görevlerde geri alma adımı
-- [ ] Otomatik geri yükleme noktası seçeneği
+- [x] Uygun görevlerde doğrulanmış önceki duruma dayanan geri alma adımı
+- [x] İzinli kritik işlemlerde doğrulamalı geri yükleme noktası seçeneği
+- [x] Geri alma ve korumalı RDP/SMB işlemlerinde dosyasız, mutlak System32
+      yollarına bağlı izin listeli yürütme
+- [x] İlk yan etkiden hemen önce yükseltilmiş önkoşul doğrulaması ve
+      kullanılmış/yinelenen plan kimliklerinin güvenli reddi
 - [ ] Ayrı, dar kapsamlı yetkili yardımcı süreç
 
 **Çıkış ölçütü:** Yetki yükseltme yalnızca gerektiğinde yapılmalı ve kritik

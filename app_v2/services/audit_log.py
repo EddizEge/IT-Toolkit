@@ -31,6 +31,7 @@ VALID_AUDIT_EVENTS = frozenset(
         "prepared",
         "cancelled",
         "approved",
+        "recovery_override",
         "started",
         "cancel_requested",
         "delegated",
@@ -119,9 +120,13 @@ def _validate_event_shape(
 ) -> None:
     if event in {"prepared", "cancelled"}:
         valid = not approval_mode and not task_id and not status
-    elif event == "approved":
+    elif event in {"approved", "recovery_override"}:
         valid = (
-            approval_mode in {"automatic", "user"}
+            approval_mode in (
+                {"user"}
+                if event == "recovery_override"
+                else {"automatic", "user"}
+            )
             and not task_id
             and not status
         )
@@ -170,6 +175,7 @@ class AuditEvent:
     app_version: str
     event: str
     plan_id: str
+    parent_plan_id: str
     action_key: str
     title: str
     category: str
@@ -181,7 +187,10 @@ class AuditEvent:
     exit_code: int | None = None
 
     def to_dict(self) -> dict[str, object]:
-        return asdict(self)
+        value = asdict(self)
+        if not self.parent_plan_id:
+            value.pop("parent_plan_id")
+        return value
 
 
 class AuditLog:
@@ -216,6 +225,7 @@ class AuditLog:
         return self.record(
             event,
             plan_id=plan.plan_id,
+            parent_plan_id=plan.parent_plan_id,
             action_key=plan.action_key,
             title=plan.title,
             category=plan.category,
@@ -232,6 +242,7 @@ class AuditLog:
         event: str,
         *,
         plan_id: str,
+        parent_plan_id: str = "",
         action_key: str,
         title: str,
         category: str,
@@ -253,6 +264,14 @@ class AuditLog:
             raise ValueError(f"Geçersiz onay biçimi: {approval_mode}")
         if not isinstance(plan_id, str) or not PLAN_ID_PATTERN.fullmatch(plan_id):
             raise ValueError("Geçersiz denetim alanı: plan_id")
+        if not isinstance(parent_plan_id, str) or (
+            parent_plan_id
+            and (
+                not PLAN_ID_PATTERN.fullmatch(parent_plan_id)
+                or parent_plan_id == plan_id
+            )
+        ):
+            raise ValueError("Geçersiz denetim alanı: parent_plan_id")
         if not isinstance(title, str) or not isinstance(category, str):
             raise TypeError("Geçersiz denetim metni.")
         if not isinstance(admin_required, bool):
@@ -288,6 +307,7 @@ class AuditLog:
             app_version=__version__,
             event=event,
             plan_id=plan_id,
+            parent_plan_id=parent_plan_id,
             action_key=action_key_value,
             title=_clean_text(
                 title,
@@ -384,6 +404,7 @@ class AuditLog:
             raise ValueError("Geçersiz denetim kaydı.")
         event_id = value.get("event_id")
         plan_id = value.get("plan_id")
+        parent_plan_id = value.get("parent_plan_id", "")
         event = value.get("event")
         risk = value.get("risk")
         approval_mode = value.get("approval_mode")
@@ -392,6 +413,14 @@ class AuditLog:
             raise ValueError("Geçersiz olay kimliği.")
         if not isinstance(plan_id, str) or not PLAN_ID_PATTERN.fullmatch(plan_id):
             raise ValueError("Geçersiz plan kimliği.")
+        if not isinstance(parent_plan_id, str) or (
+            parent_plan_id
+            and (
+                not PLAN_ID_PATTERN.fullmatch(parent_plan_id)
+                or parent_plan_id == plan_id
+            )
+        ):
+            raise ValueError("Geçersiz üst plan kimliği.")
         if not isinstance(event, str) or event not in VALID_AUDIT_EVENTS:
             raise ValueError("Geçersiz olay.")
         if not isinstance(risk, str) or risk not in VALID_RISKS:
@@ -449,6 +478,7 @@ class AuditLog:
             ),
             event=event,
             plan_id=plan_id,
+            parent_plan_id=str(parent_plan_id),
             action_key=action_key,
             title=_clean_text(
                 value["title"],

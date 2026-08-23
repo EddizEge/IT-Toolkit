@@ -3,7 +3,13 @@ from __future__ import annotations
 import unittest
 from unittest.mock import patch
 
-from PySide6.QtWidgets import QApplication, QDialog, QPushButton, QWidget
+from PySide6.QtWidgets import (
+    QApplication,
+    QCheckBox,
+    QDialog,
+    QPushButton,
+    QWidget,
+)
 
 from app_v2.action_confirmation import (
     CriticalConfirmationDialog,
@@ -36,6 +42,18 @@ class ActionConfirmationTests(unittest.TestCase):
 
         self.assertTrue(buttons["Vazgeç"].isDefault())
         self.assertFalse(buttons["Son onaya devam et"].autoDefault())
+        dialog.close()
+
+    def test_optional_restore_point_is_visible_and_selected_by_default(
+        self,
+    ) -> None:
+        dialog = ImpactReviewDialog(self.critical_impact, self.parent)
+        checkbox = dialog.findChild(QCheckBox)
+
+        self.assertIsNotNone(checkbox)
+        assert checkbox is not None
+        self.assertTrue(checkbox.isChecked())
+        self.assertIn("önerilir", checkbox.text())
         dialog.close()
 
     def test_critical_start_requires_written_confirmation(self) -> None:

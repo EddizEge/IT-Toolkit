@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ntpath
 import os
 from pathlib import Path
 
@@ -17,6 +18,22 @@ from app_v2.services.command_builder import (
 )
 from app_v2.services.preferences import ToolPreferences
 from app_v2.services.task_manager import TaskManager
+
+
+def _is_protected_ownership_target(folder: str) -> bool:
+    """Sürücü ve Windows sistem köklerinde toplu sahiplik değişimini engelle."""
+    normalized = ntpath.normcase(ntpath.normpath(folder.strip()))
+    drive, tail = ntpath.splitdrive(normalized)
+    if drive and not tail.strip("\\/"):
+        return True
+
+    system_root = os.environ.get("SystemRoot") or os.environ.get("WINDIR", "")
+    if not system_root:
+        return False
+    normalized_system_root = ntpath.normcase(
+        ntpath.normpath(system_root.strip())
+    )
+    return normalized == normalized_system_root
 
 
 class DataPage(ToolsPage):
@@ -73,17 +90,30 @@ class DataPage(ToolsPage):
         )
         if not folder:
             return None
+        if _is_protected_ownership_target(folder):
+            self.report(
+                action.title,
+                False,
+                "Sürücü kökü veya Windows sistem klasörünün sahipliği topluca "
+                "değiştirilemez. Daha dar kapsamlı bir klasör seçin.",
+            )
+            return None
         return execution_plan_for_action(
             action,
             command=fail_fast_sequence(
                 (
-                    f'takeown /f "{folder}" /r /d y',
-                    f'icacls "{folder}" /grant administrators:F /t',
+                    f'takeown /f "{folder}" /a /r /d y',
+                    f'icacls "{folder}" /grant *S-1-5-32-544:F /t',
                 )
             ),
             target=folder,
             admin_required=True,
             keep_open=True,
+            rollback=(
+                "Bu işlem kişisel dosyaların yedeğini oluşturmaz. Önceki sahip "
+                "ve erişim listeleri kaydedilmediği için eksiksiz otomatik geri "
+                "alma yoktur."
+            ),
         )
 
     def _wipe_free_space(self, action: ToolAction) -> ExecutionPlan | None:

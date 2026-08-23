@@ -4,7 +4,7 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QApplication,
@@ -31,6 +31,23 @@ from app_v2.services.task_manager import (
     status_text,
 )
 
+RESTORE_POINT_STATUS_TEXT = {
+    "not_applicable": "Uygulanmıyor",
+    "skipped": "Atlandı",
+    "created": "Oluşturuldu",
+    "failed_override": "Oluşturulamadı; açık onayla devam edildi",
+}
+
+UNDO_STATUS_TEXT = {
+    "none": "Sunulmuyor",
+    "available": "Kullanılabilir",
+    "running": "Devam ediyor",
+    "completed": "Tamamlandı",
+    "unknown": "Sonuç doğrulanamadı",
+}
+
+PLAN_ID_PATTERN = re.compile(r"^[0-9a-f]{32}$")
+
 
 class SummaryCard(QFrame):
     def __init__(
@@ -54,6 +71,8 @@ class SummaryCard(QFrame):
 
 
 class TaskCenterPage(QWidget):
+    undo_requested = Signal(str)
+
     def __init__(
         self,
         manager: TaskManager,
@@ -203,6 +222,12 @@ class TaskCenterPage(QWidget):
         self.cancel_button = QPushButton("Görevi İptal Et")
         self.cancel_button.setObjectName("DangerButton")
         self.cancel_button.clicked.connect(self._cancel_selected)
+        self.undo_button = QPushButton("Değişikliği geri al")
+        self.undo_button.setObjectName("GhostButton")
+        self.undo_button.setToolTip(
+            "Seçili görevin kayıtlı güvenli geri alma işlemini hazırlar."
+        )
+        self.undo_button.clicked.connect(self._request_undo_selected)
         self.copy_button = QPushButton("Çıktıyı Kopyala")
         self.copy_button.setObjectName("GhostButton")
         self.copy_button.clicked.connect(self._copy_output)
@@ -210,6 +235,7 @@ class TaskCenterPage(QWidget):
         self.export_button.setObjectName("GhostButton")
         self.export_button.clicked.connect(self._export_report)
         button_row.addWidget(self.cancel_button)
+        button_row.addWidget(self.undo_button)
         button_row.addStretch()
         button_row.addWidget(self.copy_button)
         button_row.addWidget(self.export_button)
@@ -220,7 +246,7 @@ class TaskCenterPage(QWidget):
         layout.addWidget(output_title)
         layout.addWidget(self.output, 1)
         layout.addLayout(button_row)
-        self._set_detail_buttons(False, False)
+        self._set_detail_buttons(False, False, False)
         return panel
 
     def show_task(self, task_id: str) -> None:
@@ -309,24 +335,44 @@ class TaskCenterPage(QWidget):
             self.progress.setRange(0, 100)
             self.progress.setValue(0)
             self.output.clear()
-            self._set_detail_buttons(False, False)
+            self._set_detail_buttons(False, False, False)
             return
 
         self.detail_title.setText(task.title)
         self.status.setText(status_text(task.status))
         self._set_status_property(self._status_property(task.status))
-        short_plan_id = task.plan_id[:12] if task.plan_id else "—"
+        safe_plan_id = self._safe_plan_id(task.plan_id)
+        safe_parent_plan_id = self._safe_plan_id(task.parent_plan_id)
+        short_plan_id = safe_plan_id[:12] if safe_plan_id else "—"
+        restore_status_text = self._restore_point_status_text(
+            task.restore_point_status
+        )
+        recovery_lines = [
+            f"Geri yükleme noktası durumu: {restore_status_text}",
+            f"Geri alma durumu: {self._undo_status_text(task.undo_state)}",
+        ]
+        if safe_parent_plan_id:
+            recovery_lines.append(
+                f"Üst işlem kimliği: {safe_parent_plan_id[:12]}"
+            )
+        recovery_text = "\n".join(recovery_lines)
         self.meta.setText(
             f"{task.category}  •  Başlangıç: {task.started_at or task.created_at}"
             f"  •  Çıkış kodu: {task.exit_code if task.exit_code is not None else '—'}"
             f"\nDenetim kimliği: {short_plan_id}"
+            f"\n{recovery_text}"
             f"\n{task.message or 'Görev sıraya alındı.'}"
         )
-        self.meta.setToolTip(
-            f"Tam denetim kimliği: {task.plan_id}"
-            if task.plan_id
+        tooltip_lines = [
+            f"Tam denetim kimliği: {safe_plan_id}"
+            if safe_plan_id
             else "Bu eski görev için denetim kimliği bulunmuyor."
-        )
+        ]
+        if safe_parent_plan_id:
+            tooltip_lines.append(
+                f"Tam üst işlem kimliği: {safe_parent_plan_id}"
+            )
+        self.meta.setToolTip("\n".join(tooltip_lines))
         if task.status in ACTIVE_STATUSES and task.progress is None:
             self.progress.setRange(0, 0)
         else:
@@ -345,6 +391,7 @@ class TaskCenterPage(QWidget):
         self._set_detail_buttons(
             task.status in ACTIVE_STATUSES and task.cancellable,
             True,
+            self._can_request_undo(task),
         )
 
     def _cancel_selected(self) -> None:
@@ -370,6 +417,16 @@ class TaskCenterPage(QWidget):
         if task:
             QApplication.clipboard().setText(task.output or task.message)
 
+    def _request_undo_selected(self) -> None:
+        if not self._selected_id:
+            return
+        task = self.manager.task(self._selected_id)
+        if not task or not self._can_request_undo(task):
+            self.undo_button.setEnabled(False)
+            return
+        self.undo_button.setEnabled(False)
+        self.undo_requested.emit(task.id)
+
     def _export_report(self) -> None:
         if not self._selected_id:
             return
@@ -391,7 +448,7 @@ class TaskCenterPage(QWidget):
             path += ".txt"
         try:
             Path(path).write_text(
-                self.manager.report_text(task.id),
+                self._report_text(task),
                 encoding="utf-8-sig",
             )
         except OSError as exc:
@@ -442,10 +499,75 @@ class TaskCenterPage(QWidget):
         )
         self._update_counts(running, succeeded, failed)
 
-    def _set_detail_buttons(self, cancellable: bool, available: bool) -> None:
+    def _set_detail_buttons(
+        self,
+        cancellable: bool,
+        available: bool,
+        undo_available: bool,
+    ) -> None:
         self.cancel_button.setEnabled(cancellable)
+        self.undo_button.setEnabled(undo_available)
         self.copy_button.setEnabled(available)
         self.export_button.setEnabled(available)
+
+    def _report_text(self, task: TaskRecord) -> str:
+        report = self.manager.report_text(task.id)
+        lines = report.splitlines()
+        restore_status_text = self._restore_point_status_text(
+            task.restore_point_status
+        )
+        recovery_lines = [
+            f"Geri yükleme noktası durumu: {restore_status_text}",
+            f"Geri alma durumu: {self._undo_status_text(task.undo_state)}",
+        ]
+        parent_plan_id = self._safe_plan_id(task.parent_plan_id)
+        if parent_plan_id:
+            recovery_lines.append(f"Üst işlem kimliği: {parent_plan_id}")
+
+        existing_labels = {
+            line.split(":", 1)[0]
+            for line in lines
+            if ":" in line
+        }
+        additions = [
+            line
+            for line in recovery_lines
+            if line.split(":", 1)[0] not in existing_labels
+        ]
+        if not additions:
+            return report
+
+        insertion_index = next(
+            (
+                index + 1
+                for index, line in enumerate(lines)
+                if line.startswith("Denetim kimliği:")
+            ),
+            len(lines),
+        )
+        lines[insertion_index:insertion_index] = additions
+        return "\n".join(lines)
+
+    @staticmethod
+    def _safe_plan_id(value: str) -> str:
+        return value if PLAN_ID_PATTERN.fullmatch(value) else ""
+
+    @staticmethod
+    def _restore_point_status_text(value: str) -> str:
+        return RESTORE_POINT_STATUS_TEXT.get(value, "Bilinmiyor")
+
+    @staticmethod
+    def _undo_status_text(value: str) -> str:
+        return UNDO_STATUS_TEXT.get(value, "Bilinmiyor")
+
+    @classmethod
+    def _can_request_undo(cls, task: TaskRecord) -> bool:
+        return (
+            task.status == "succeeded"
+            and task.undo_state == "available"
+            and bool(task.undo_key)
+            and bool(cls._safe_plan_id(task.plan_id))
+        )
 
     def _set_status_property(self, value: str) -> None:
         self.status.setProperty("status", value)

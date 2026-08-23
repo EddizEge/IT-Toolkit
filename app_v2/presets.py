@@ -19,6 +19,8 @@ class TechnicianPreset:
     impact: str = ""
     interruption: str = ""
     rollback: str = ""
+    restore_point_policy: str = "none"
+    undo_key: str = ""
 
 
 TECHNICIAN_PRESETS = (

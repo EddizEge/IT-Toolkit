@@ -245,6 +245,9 @@ class QuickAccessPage(QWidget):
             plan_id=plan.plan_id,
             action_key=plan.action_key,
             risk=plan.impact.risk,
+            parent_plan_id=plan.parent_plan_id,
+            undo_key=plan.impact.recovery.undo_key,
+            restore_point_status="not_applicable",
         )
         ok = task.status not in {"failed", "cancelled", "interrupted"}
         message = (
@@ -270,7 +273,7 @@ class QuickAccessPage(QWidget):
                 plan,
                 approval_mode=approval_mode,
             )
-        except ValueError:
+        except (TypeError, ValueError):
             return False
 
     def _report_audit_block(self, plan: ExecutionPlan) -> None:

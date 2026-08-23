@@ -44,6 +44,8 @@ IT-Toolkit/
 │   └── services/               # Görev, komut, tercih, sağlık ve sistem servisleri
 │       ├── action_safety.py    # Risk politikası, etki ve değişmez işlem planı
 │       ├── audit_log.py        # Dönen, maskeli JSONL işlem denetim günlüğü
+│       ├── recovery.py         # Doğrulamalı, izin listeli geri yükleme noktası
+│       ├── undo_execution.py   # Dosyasız geri alma ve korumalı eylem yürütücüsü
 │       ├── error_logging.py    # Dönen yerel log ve hassas veri maskeleme
 │       ├── feedback_service.py # Rapor metni ve GitHub issue bağlantısı
 │       └── update_service.py   # GitHub Release, SHA-256 ve EXE değiştirme
@@ -160,13 +162,79 @@ ayrıca kendi benzersiz `event_id` değerini taşır.
   kapanışta yeniden denenmeli; sonucu henüz yazılamayan görevler geçmiş
   temizliği veya sınırlandırması sırasında korunmalıdır.
 - Geçmiş ile günlük çelişirse doğrulanmış terminal günlük sonucu kullanılmalıdır.
-- UAC'ye devredilen görev `delegated` olarak kaydedilmeli; harici sürecin gerçek
-  tamamlanma sonucu yakalanmış gibi gösterilmemelidir.
+- Genel komut yolunda UAC'ye devredilen ve sonucu yakalanamayan görev
+  `delegated` olarak kaydedilmeli; harici sürecin gerçek tamamlanma sonucu
+  yakalanmış gibi gösterilmemelidir. `recovery.py` ve `undo_execution.py`
+  içindeki dosyasız sarmallar yükseltilmiş alt süreci bekleyip gerçek çıkış
+  kodunu aktarır; bu akışlar `delegated` olarak işaretlenmemelidir.
 - `TaskRecord.plan_id` eski görev geçmişleriyle geriye uyumludur. Bozuk bir
   kayıt bütün görev geçmişinin yüklenmesini engellememelidir.
 - Görev Merkezi listesi kimlikle kalabalıklaştırılmamalı; seçili görevde kısa
   denetim kimliği, araç ipucunda ve dışa aktarılan raporda tam kimlik
   gösterilmelidir.
+
+### Geri yükleme noktası ve güvenli geri alma
+
+`app_v2/services/recovery.py`, yalnız merkezi politikada izin verilen eylemler
+için Windows geri yükleme noktası oluşturur. `RecoveryPolicy`, ana ve geri alma
+işlemlerinin uygunluğunu belirler; çocuk planlar yeni `plan_id` alır ve ana
+işleme `parent_plan_id` ile bağlanır.
+
+- Geri yükleme noktası başarısı yalnız cmdlet çağrısına veya sıfır çıkış koduna
+  dayandırılmamalı; işlem öncesinden daha yüksek `SequenceNumber` ve plana özel
+  tam açıklama eşleşmesi görülmelidir.
+- Restore primitive'i serbest komut, başlık, hedef veya kullanıcı metni kabul
+  etmemeli; yeni eylemler açık izin listesi ve politika incelemesi olmadan
+  eklenmemelidir.
+- Restore cmdlet'leri otomatik modül çözümlemesine bırakılmamalı;
+  `$PSHOME\Modules` altındaki doğrulanmış `Microsoft.PowerShell.Management`
+  manifestinden yüklenip tam modül adıyla çağrılmalıdır.
+- Aynı anda tek restore görevi çalışmalı. UAC iptali, sorgu hatası, 24 saat
+  sınırı veya zaman aşımı başarı sayılmamalıdır.
+- Restore başarısızsa ana işlem varsayılan olarak durmalıdır. Korumasız devam
+  ancak ikinci açık onay ve `recovery_override` denetim olayıyla mümkündür.
+- Uygulama Sistem Korumasını, `SystemRestorePointCreationFrequency` değerini,
+  kurum politikasını veya VBS ayarını sessizce değiştirmemelidir.
+- Otomatik geri alma yalnız işlem öncesi ayar durumu okunmuş, ana görev yerelde
+  `succeeded` olmuş ve mevcut durum değişmemişse sunulmalıdır. `delegated`,
+  `failed`, `cancelled` veya `interrupted` sonuç geri alınabilir başarı değildir.
+- Geri alma düğmesi ham komut taşımamalı; yalnız görev kimliği yayınlamalı ve
+  merkezi allowlist yeni, değişmez bir çocuk plan üretmelidir.
+- Çocuk geri alma planı başlatılmadan önce kayıtlı ana işlemden yeniden üretilen
+  kanonik planla eylem, komut, yetki, başarı kodu ve etki alanlarında birebir
+  eşleşmelidir. Genel görev ve sonuç API'leri `parent_plan_id` kabul etmemelidir.
+- Geri alma ile korumalı RDP ve SMBv1 işlemleri `undo_execution.py` içindeki
+  sabit izin listesinden üretilmeli; genel görev/sonuç API'leri bu eylem
+  anahtarlarını kabul etmemeli ve genel komut dosyası yoluna düşülmemelidir.
+- Bu akışlarda geçici `.cmd` dosyası veya serbest komut metni bulunmamalıdır.
+  Windows PowerShell ile `reg.exe`, `sc.exe`, `net.exe`, `dism.exe`,
+  `powercfg.exe`, `shutdown.exe` ve `netsh.exe` yalnız `GetSystemDirectoryW`
+  sonucundan türetilen mutlak yollarla çalıştırılmalıdır.
+- Toggle geri alma önkoşulu UAC sonrasında, yükseltilmiş çocuk süreçte ilk yan
+  etkiden hemen önce yeniden okunmalıdır. Kayıt defteri değer türü ve beklenen
+  tam durum eşleşmeli; SMB sorgusu sınırlı sürede bitmelidir. Sorgu hatası,
+  zaman aşımı veya durum uyuşmazlığı hiçbir değişiklik başlatmadan durmalıdır.
+- Aynı parent için ikinci geri alma, zincirleme geri alma ve durum kayması
+  güvenli biçimde reddedilmelidir. Sonucu yakalanamayan geri alma `unknown`
+  kalmalı, tamamlanmış gibi gösterilmemelidir.
+- Daha önce görev geçmişinde veya `started`, `delegated`, `result` denetim
+  olayında kullanılmış `plan_id` yeniden yürütülmemelidir. Geçmişte yinelenen
+  kök `plan_id` görülürse ilgili geri almalar `unknown` durumuna alınmalıdır.
+- Genel görev kabuğu ve süreç ağacı temizleyicisi de PATH yerine
+  `GetSystemDirectoryW` ile doğrulanan mutlak `cmd.exe` ve `taskkill.exe`
+  yollarını kullanmalı; yol çözülemezse görev yan etki üretmeden kapanmalıdır.
+- `CrashExit`, sıfır çıkış koduyla gelse bile başarı değildir. Uygulama kapanışı
+  yeni görevleri kapatmalı ve doğrulama sonrası bekleyen ana planları iptal
+  olayıyla temizlemelidir.
+- Sistem Geri Yükleme kişisel dosya veya ACL yedeği olarak anlatılmamalıdır.
+  Sahiplik, boş alan temizleme ve zorla uygulama kapatma gibi işlemlerde sahte
+  otomatik geri alma sunulmamalıdır.
+- Klasör sahipliği Yöneticiler grubunu `/A` ve `*S-1-5-32-544` ile hedeflemeli;
+  sürücü, UNC paylaşım ve Windows sistem kökleri toplu değişiklikten
+  korunmalıdır.
+- Güvenli Mod için kalıcı `bcdedit /set ... safeboot` zorlaması eklenmemeli;
+  Windows Başlangıç Ayarları üzerinden tek açılışlık kullanıcı seçimi
+  kullanılmalıdır.
 
 ### Sistem izleme ve akıllı tanılama
 
@@ -355,6 +423,8 @@ parçasıdır.
 - [ ] Yeni hata yolları yerel günlüğe güvenli biçimde yansıyor.
 - [ ] Yetkili ve riskli işlemlerin `plan_id` bağlantılı denetim olayları
       hassas veri içermeden kaydediliyor.
+- [ ] Restore ve geri alma yalnız izinli eylemler, doğrulanmış sonuç ve güncel
+      durumla çalışıyor; harici UAC devri başarı sayılmıyor.
 - [ ] Açık GitHub uygulama geri bildirimleri kontrol edildi.
 - [ ] Güncelleme varlık adı ve SHA-256 doğrulaması kontrol edildi.
 - [ ] İlgili belge ve sürüm notları güncel.

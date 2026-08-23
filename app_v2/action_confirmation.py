@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
+    QCheckBox,
     QDialog,
     QFrame,
     QHBoxLayout,
@@ -13,6 +16,15 @@ from PySide6.QtWidgets import (
 )
 
 from app_v2.services.action_safety import OperationImpact
+
+
+@dataclass(frozen=True, slots=True)
+class OperationConfirmation:
+    approved: bool
+    create_restore_point: bool = False
+
+    def __bool__(self) -> bool:
+        return self.approved
 
 
 def _detail_block(title: str, text: str) -> QFrame:
@@ -84,7 +96,28 @@ class ImpactReviewDialog(QDialog):
         )
         layout.addWidget(_detail_block("YETKİ", privilege))
         layout.addWidget(_detail_block("OLASI KESİNTİ", impact.interruption))
-        layout.addWidget(_detail_block("GERİ ALMA", impact.rollback))
+        layout.addWidget(_detail_block("KORUMA VE GERİ ALMA", impact.rollback))
+        self.restore_point_checkbox: QCheckBox | None = None
+        if impact.recovery.restore_point_mode == "optional":
+            protection = QFrame()
+            protection.setObjectName("SafetyDetail")
+            protection_layout = QVBoxLayout(protection)
+            protection_layout.setContentsMargins(14, 11, 14, 11)
+            protection_layout.setSpacing(5)
+            self.restore_point_checkbox = QCheckBox(
+                "İşlemden önce geri yükleme noktası oluştur (önerilir)"
+            )
+            self.restore_point_checkbox.setChecked(True)
+            note = QLabel(
+                "Windows yeni noktayı oluşturup doğrulayamazsa ana işlem "
+                "başlamadan önce yeniden sorulur. Bu koruma kişisel dosyaları, "
+                "silinmiş verileri veya kaydedilmemiş çalışmaları geri getirmez."
+            )
+            note.setObjectName("CardSubtitle")
+            note.setWordWrap(True)
+            protection_layout.addWidget(self.restore_point_checkbox)
+            protection_layout.addWidget(note)
+            layout.addWidget(protection)
         layout.addStretch()
 
         buttons = QHBoxLayout()
@@ -107,6 +140,13 @@ class ImpactReviewDialog(QDialog):
         buttons.addWidget(cancel)
         buttons.addWidget(proceed)
         layout.addLayout(buttons)
+
+    @property
+    def restore_point_requested(self) -> bool:
+        return bool(
+            self.restore_point_checkbox
+            and self.restore_point_checkbox.isChecked()
+        )
 
 
 class CriticalConfirmationDialog(QDialog):
@@ -186,16 +226,83 @@ class CriticalConfirmationDialog(QDialog):
         )
 
 
+class RestorePointFailureDialog(QDialog):
+    def __init__(
+        self,
+        action_title: str,
+        reason: str,
+        parent: QWidget | None = None,
+    ) -> None:
+        super().__init__(parent)
+        self.setObjectName("SafetyDialog")
+        self.setWindowTitle("Geri yükleme noktası oluşturulamadı")
+        self.resize(620, 420)
+        self.setMinimumSize(540, 370)
+        self.setModal(True)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(28, 25, 28, 25)
+        layout.setSpacing(14)
+
+        risk = QLabel("KORUMA HAZIR DEĞİL")
+        risk.setObjectName("SafetyRiskBadge")
+        risk.setProperty("risk", "danger")
+        risk.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(risk, 0, Qt.AlignmentFlag.AlignLeft)
+
+        title = QLabel("Ana işlem henüz başlamadı")
+        title.setObjectName("PageTitle")
+        layout.addWidget(title)
+
+        explanation = QLabel(
+            f"“{action_title}” için doğrulanmış bir geri yükleme noktası "
+            "hazırlanamadı. Koruma olmadan devam etmek geri dönüşü "
+            "zorlaştırabilir."
+        )
+        explanation.setObjectName("PageSubtitle")
+        explanation.setWordWrap(True)
+        layout.addWidget(explanation)
+        layout.addWidget(_detail_block("AYRINTI", reason))
+        layout.addStretch()
+
+        buttons = QHBoxLayout()
+        stop = QPushButton("İşlemi durdur")
+        stop.setObjectName("GhostButton")
+        stop.setDefault(True)
+        stop.clicked.connect(self.reject)
+        proceed = QPushButton("Geri yükleme noktası olmadan devam et")
+        proceed.setObjectName("DangerButton")
+        proceed.setAutoDefault(False)
+        proceed.clicked.connect(self.accept)
+        buttons.addStretch()
+        buttons.addWidget(stop)
+        buttons.addWidget(proceed)
+        layout.addLayout(buttons)
+
+
 def confirm_operation(
     parent: QWidget,
     impact: OperationImpact,
-) -> bool:
+) -> OperationConfirmation:
     if impact.confirmation_stages == 0:
-        return True
+        return OperationConfirmation(True)
     review = ImpactReviewDialog(impact, parent)
     if review.exec() != QDialog.DialogCode.Accepted:
-        return False
+        return OperationConfirmation(False)
+    create_restore_point = bool(review.restore_point_requested)
     if impact.confirmation_stages == 1:
-        return True
+        return OperationConfirmation(True, create_restore_point)
     critical = CriticalConfirmationDialog(impact, parent)
-    return critical.exec() == QDialog.DialogCode.Accepted
+    return OperationConfirmation(
+        critical.exec() == QDialog.DialogCode.Accepted,
+        create_restore_point,
+    )
+
+
+def confirm_without_restore_point(
+    parent: QWidget,
+    action_title: str,
+    reason: str,
+) -> bool:
+    dialog = RestorePointFailureDialog(action_title, reason, parent)
+    return dialog.exec() == QDialog.DialogCode.Accepted

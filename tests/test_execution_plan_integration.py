@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -96,6 +97,11 @@ class ExecutionPlanIntegrationTests(unittest.TestCase):
         impact = confirmation.call_args.args[1]
         self.assertEqual(impact.target, target)
         self.assertEqual(impact.confirmation_stages, 2)
+        self.assertIn(
+            "kişisel dosyaların yedeğini oluşturmaz",
+            impact.rollback,
+        )
+        self.assertIn("eksiksiz otomatik geri alma yoktur", impact.rollback)
         self.task_manager.start_command.assert_not_called()
         self.assertEqual(self.preferences.recents, ())
         events = self.audit_log.read_events(limit=10)
@@ -105,6 +111,60 @@ class ExecutionPlanIntegrationTests(unittest.TestCase):
         )
         raw = self.audit_log.path.read_text(encoding="utf-8")
         self.assertNotIn(target, raw)
+
+    def test_ownership_command_uses_administrators_sid_without_running_it(
+        self,
+    ) -> None:
+        page = self._data_page()
+        action = ACTION_LOOKUP["take_ownership"][1]
+        target = r"C:\Musteri\Arsiv"
+
+        with patch(
+            "app_v2.pages.data.QFileDialog.getExistingDirectory",
+            return_value=target,
+        ):
+            plan = page._take_ownership(action)
+
+        self.assertIsNotNone(plan)
+        assert plan is not None
+        self.assertIn(f'takeown /f "{target}" /a /r /d y', plan.command)
+        self.assertIn(
+            f'icacls "{target}" /grant *S-1-5-32-544:F /t',
+            plan.command,
+        )
+        self.assertNotIn("administrators:F", plan.command.lower())
+        self.task_manager.start_command.assert_not_called()
+
+    def test_ownership_rejects_drive_and_windows_roots_before_confirmation(self) -> None:
+        action = ACTION_LOOKUP["take_ownership"][1]
+        with patch.dict(os.environ, {"SystemRoot": r"C:\Windows"}):
+            for target in ("C:\\", r"C:\Windows"):
+                with self.subTest(target=target):
+                    page = self._data_page()
+                    self.task_manager.reset_mock()
+                    with (
+                        patch(
+                            "app_v2.pages.data.QFileDialog.getExistingDirectory",
+                            return_value=target,
+                        ),
+                        patch(
+                            "app_v2.pages.tools_page.confirm_operation"
+                        ) as confirmation,
+                    ):
+                        page.execute_action(action)
+
+                    confirmation.assert_not_called()
+                    self.task_manager.start_command.assert_not_called()
+                    self.task_manager.record_result.assert_called_once()
+                    self.assertFalse(
+                        self.task_manager.record_result.call_args.kwargs["success"]
+                    )
+                    self.assertIn(
+                        "Daha dar kapsamlı bir klasör seçin",
+                        self.task_manager.record_result.call_args.args[1],
+                    )
+                    self.assertEqual(self.preferences.recents, ())
+                    self.assertEqual(self.audit_log.read_events(), ())
 
     def test_wipe_confirmation_contains_resolved_drive(self) -> None:
         page = self._data_page()

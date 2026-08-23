@@ -4,7 +4,7 @@ from collections import defaultdict
 from collections.abc import Callable
 
 from PySide6.QtCore import QTimer, QUrl, Signal
-from PySide6.QtGui import QDesktopServices, QShowEvent
+from PySide6.QtGui import QCloseEvent, QDesktopServices, QShowEvent
 from PySide6.QtWidgets import (
     QFrame,
     QGridLayout,
@@ -14,7 +14,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from app_v2.action_confirmation import confirm_operation
+from app_v2.action_confirmation import (
+    confirm_operation,
+    confirm_without_restore_point,
+)
 from app_v2.registry import ToggleAction, ToolAction
 from app_v2.services.action_safety import (
     ExecutionPlan,
@@ -26,6 +29,7 @@ from app_v2.services.audit_log import AuditLog
 from app_v2.services.preferences import ToolPreferences
 from app_v2.services.settings_service import get_toggle_status
 from app_v2.services.task_manager import TaskManager
+from app_v2.services.undo_execution import PROTECTED_ACTION_KEYS
 from app_v2.widgets import ActionTile, ToggleRow
 
 
@@ -59,6 +63,15 @@ class ToolsPage(QWidget):
         self._sections: list[tuple[QWidget, list[ActionTile]]] = []
         self._toggle_rows: dict[str, ToggleRow] = {}
         self._toggle_section: QWidget | None = None
+        self._pending_restore_plans: dict[
+            str,
+            tuple[ExecutionPlan, bool, QWidget],
+        ] = {}
+        self._scheduled_restore_finishes: set[str] = set()
+        self._shutting_down = False
+        self.task_manager.task_updated.connect(
+            self._on_restore_task_updated
+        )
 
         root_layout = QVBoxLayout(self)
         root_layout.setContentsMargins(0, 0, 0, 0)
@@ -169,6 +182,14 @@ class ToolsPage(QWidget):
                     self.record_recent(action.key)
                 return
             handler = self._plan_handlers.get(action.handler)
+            if action.handler == "restore_point":
+                self._execute_plan(
+                    execution_plan_for_action(
+                        action,
+                        command="registered:restore_point",
+                    )
+                )
+                return
             if not handler:
                 self.status_message.emit(
                     f"{action.title}: özel işlem tanımlı değil.",
@@ -186,12 +207,17 @@ class ToolsPage(QWidget):
         plan: ExecutionPlan,
         *,
         record_recent: bool = True,
+        dialog_parent: QWidget | None = None,
     ) -> bool:
+        if self._shutting_down:
+            return False
+        parent = dialog_parent or self
         prepared = self._record_plan_event("prepared", plan)
         if not prepared and self._requires_audit(plan):
             self._report_audit_block(plan)
             return False
-        if not confirm_operation(self, plan.impact):
+        confirmation = confirm_operation(parent, plan.impact)
+        if not confirmation:
             self._record_plan_event("cancelled", plan)
             return False
         approved = self._record_plan_event(
@@ -206,22 +232,186 @@ class ToolsPage(QWidget):
         if not approved and self._requires_audit(plan):
             self._report_audit_block(plan)
             return False
+        if plan.action_key == "restore":
+            return self._start_approved_plan(
+                plan,
+                record_recent=record_recent,
+                restore_point_status="not_applicable",
+            )
+        create_restore_point = bool(
+            getattr(confirmation, "create_restore_point", False)
+        )
+        if create_restore_point:
+            try:
+                task = self.task_manager.start_restore_point(
+                    plan.title,
+                    parent_plan_id=plan.plan_id,
+                    parent_action_key=plan.action_key,
+                    risk=plan.impact.risk,
+                )
+            except (RuntimeError, TypeError, ValueError) as exc:
+                self._record_plan_event("cancelled", plan)
+                self.status_message.emit(
+                    f"{plan.title}: koruma görevi başlatılamadı ({exc}).",
+                    False,
+                )
+                return False
+            self._pending_restore_plans[task.id] = (
+                plan,
+                record_recent,
+                parent,
+            )
+            self.status_message.emit(
+                f"{plan.title}: işlemden önce geri yükleme noktası "
+                "hazırlanıyor.",
+                True,
+            )
+            if task.status not in {"queued", "running"}:
+                QTimer.singleShot(
+                    0,
+                    lambda current=task: self._on_restore_task_updated(current),
+                )
+            return True
+        restore_point_status = (
+            "skipped"
+            if plan.impact.recovery.restore_point_mode == "optional"
+            else "not_applicable"
+        )
+        return self._start_approved_plan(
+            plan,
+            record_recent=record_recent,
+            restore_point_status=restore_point_status,
+        )
+
+    def execute_plan(
+        self,
+        plan: ExecutionPlan,
+        *,
+        record_recent: bool = False,
+        dialog_parent: QWidget | None = None,
+    ) -> bool:
+        """Merkezi kapıdan önceden çözümlenmiş bir plan yürüt."""
+
+        return self._execute_plan(
+            plan,
+            record_recent=record_recent,
+            dialog_parent=dialog_parent,
+        )
+
+    def _start_approved_plan(
+        self,
+        plan: ExecutionPlan,
+        *,
+        record_recent: bool,
+        restore_point_status: str,
+    ) -> bool:
+        if self._shutting_down:
+            self._record_plan_event("cancelled", plan)
+            return False
+        if plan.action_key == "restore":
+            try:
+                task = self.task_manager.start_manual_restore(
+                    plan.title,
+                    plan_id=plan.plan_id,
+                    action_key=plan.action_key,
+                    risk=plan.impact.risk,
+                )
+            except (RuntimeError, TypeError, ValueError) as exc:
+                self._record_plan_event("cancelled", plan)
+                self.status_message.emit(
+                    f"{plan.title}: görev başlatılamadı ({exc}).",
+                    False,
+                )
+                return False
+            if record_recent:
+                self.record_recent(plan.action_key)
+            ok = task.status not in {"failed", "cancelled", "interrupted"}
+            message = (
+                task.message
+                if task.status in {"failed", "delegated"}
+                else "Doğrulama görevi Görev Merkezi'ne eklendi."
+            )
+            self.status_message.emit(f"{plan.title}: {message}", ok)
+            return ok
+
+        if plan.parent_plan_id:
+            try:
+                task = self.task_manager.start_undo(plan)
+            except (RuntimeError, TypeError, ValueError) as exc:
+                self._record_plan_event("cancelled", plan)
+                self.status_message.emit(
+                    f"{plan.title}: geri alma başlatılamadı ({exc}).",
+                    False,
+                )
+                return False
+            ok = task.status not in {
+                "failed",
+                "cancelled",
+                "interrupted",
+            }
+            message = (
+                task.message
+                if task.status in {"failed", "delegated"}
+                else "Geri alma görevi Görev Merkezi'ne eklendi."
+            )
+            self.status_message.emit(f"{plan.title}: {message}", ok)
+            return ok
+
+        if plan.action_key in PROTECTED_ACTION_KEYS:
+            try:
+                task = self.task_manager.start_protected_action(
+                    plan,
+                    restore_point_status=restore_point_status,
+                )
+            except (RuntimeError, TypeError, ValueError) as exc:
+                self._record_plan_event("cancelled", plan)
+                self.status_message.emit(
+                    f"{plan.title}: güvenli görev başlatılamadı ({exc}).",
+                    False,
+                )
+                return False
+            if record_recent:
+                self.record_recent(plan.action_key)
+            ok = task.status not in {
+                "failed",
+                "cancelled",
+                "interrupted",
+            }
+            message = (
+                task.message
+                if task.status in {"failed", "delegated"}
+                else "Güvenli görev Görev Merkezi'ne eklendi."
+            )
+            self.status_message.emit(f"{plan.title}: {message}", ok)
+            return ok
+
         opened_urls = sum(
             bool(QDesktopServices.openUrl(QUrl(url))) for url in plan.urls
         )
         task = None
         if plan.command.strip():
-            task = self.task_manager.start_command(
-                plan.title,
-                plan.command,
-                category=plan.category,
-                admin=plan.admin_required,
-                keep_open=plan.keep_open,
-                success_codes=plan.success_codes,
-                plan_id=plan.plan_id,
-                action_key=plan.action_key,
-                risk=plan.impact.risk,
-            )
+            try:
+                task = self.task_manager.start_command(
+                    plan.title,
+                    plan.command,
+                    category=plan.category,
+                    admin=plan.admin_required,
+                    keep_open=plan.keep_open,
+                    success_codes=plan.success_codes,
+                    plan_id=plan.plan_id,
+                    action_key=plan.action_key,
+                    risk=plan.impact.risk,
+                    parent_plan_id=plan.parent_plan_id,
+                    undo_key=plan.impact.recovery.undo_key,
+                    restore_point_status=restore_point_status,
+                )
+            except (RuntimeError, TypeError, ValueError) as exc:
+                self._record_plan_event("cancelled", plan)
+                self.status_message.emit(
+                    f"{plan.title}: görev başlatılamadı ({exc}).",
+                    False,
+                )
+                return False
         if record_recent:
             self.record_recent(plan.action_key)
         if task is None:
@@ -234,16 +424,26 @@ class ToolsPage(QWidget):
                     "Kalan bağlantıları daha sonra yeniden deneyin."
                 )
             )
-            self.task_manager.record_result(
-                plan.title,
-                message,
-                success=ok,
-                category=plan.category,
-                plan_id=plan.plan_id,
-                action_key=plan.action_key,
-                risk=plan.impact.risk,
-                admin=plan.admin_required,
-            )
+            try:
+                self.task_manager.record_result(
+                    plan.title,
+                    message,
+                    success=ok,
+                    category=plan.category,
+                    plan_id=plan.plan_id,
+                    action_key=plan.action_key,
+                    risk=plan.impact.risk,
+                    admin=plan.admin_required,
+                    parent_plan_id=plan.parent_plan_id,
+                    undo_key=plan.impact.recovery.undo_key,
+                    restore_point_status=restore_point_status,
+                )
+            except (RuntimeError, TypeError, ValueError) as exc:
+                self.status_message.emit(
+                    f"{plan.title}: sonuç kaydedilemedi ({exc}).",
+                    False,
+                )
+                return False
             self.status_message.emit(f"{plan.title}: {message}", ok)
             return True
         ok = task.status not in {"failed", "cancelled", "interrupted"}
@@ -254,6 +454,87 @@ class ToolsPage(QWidget):
         )
         self.status_message.emit(f"{plan.title}: {message}", ok)
         return True
+
+    def _on_restore_task_updated(self, task: object) -> None:
+        if self._shutting_down:
+            return
+        task_id = str(getattr(task, "id", ""))
+        pending = self._pending_restore_plans.get(task_id)
+        status = str(getattr(task, "status", ""))
+        if (
+            pending is None
+            or status in {"queued", "running"}
+            or task_id in self._scheduled_restore_finishes
+        ):
+            return
+        self._scheduled_restore_finishes.add(task_id)
+        QTimer.singleShot(
+            0,
+            lambda current=task, current_id=task_id: self._finish_restore_preflight(
+                current_id,
+                current,
+            ),
+        )
+
+    def _finish_restore_preflight(
+        self,
+        task_id: str,
+        task: object,
+    ) -> None:
+        self._scheduled_restore_finishes.discard(task_id)
+        if self._shutting_down:
+            return
+        pending = self._pending_restore_plans.pop(task_id, None)
+        if pending is None:
+            return
+        plan, record_recent, parent = pending
+        status = str(getattr(task, "status", ""))
+        if status == "succeeded":
+            self._start_approved_plan(
+                plan,
+                record_recent=record_recent,
+                restore_point_status="created",
+            )
+            return
+        reason = str(getattr(task, "message", "")).strip() or (
+            "Geri yükleme noktası doğrulanamadı."
+        )
+        if not confirm_without_restore_point(parent, plan.title, reason):
+            self._record_plan_event("cancelled", plan)
+            self.status_message.emit(
+                f"{plan.title}: ana işlem başlatılmadı.",
+                False,
+            )
+            return
+        recorded = self._record_plan_event(
+            "recovery_override",
+            plan,
+            approval_mode="user",
+        )
+        if not recorded and self._requires_audit(plan):
+            self._report_audit_block(plan)
+            return
+        self._start_approved_plan(
+            plan,
+            record_recent=record_recent,
+            restore_point_status="failed_override",
+        )
+
+    def cancel_pending_recovery(self) -> None:
+        """Kapanışta bekleyen ana işlemleri kesin olarak iptal et."""
+
+        if self._shutting_down:
+            return
+        self._shutting_down = True
+        pending = tuple(self._pending_restore_plans.values())
+        self._pending_restore_plans.clear()
+        self._scheduled_restore_finishes.clear()
+        for plan, _record_recent, _parent in pending:
+            self._record_plan_event("cancelled", plan)
+
+    def closeEvent(self, event: QCloseEvent) -> None:
+        self.cancel_pending_recovery()
+        super().closeEvent(event)
 
     def _record_plan_event(
         self,
@@ -271,7 +552,7 @@ class ToolsPage(QWidget):
                 plan,
                 approval_mode=approval_mode,
             )
-        except ValueError:
+        except (TypeError, ValueError):
             return False
 
     @staticmethod
@@ -299,7 +580,22 @@ class ToolsPage(QWidget):
         self.status_message.emit(f"{title}: {message}", ok)
 
     def _change_toggle(self, toggle: ToggleAction, enabled: bool) -> None:
-        plan = execution_plan_for_toggle(toggle, enabled)
+        previous_enabled, status_text = get_toggle_status(toggle.key)
+        if previous_enabled is not None and previous_enabled == enabled:
+            self._toggle_rows[toggle.key].set_status(
+                previous_enabled,
+                status_text,
+            )
+            self.status_message.emit(
+                f"{toggle.title}: ayar zaten istenen durumda.",
+                True,
+            )
+            return
+        plan = execution_plan_for_toggle(
+            toggle,
+            enabled,
+            previous_enabled=previous_enabled,
+        )
         if self._execute_plan(plan, record_recent=False):
             QTimer.singleShot(3_000, self.refresh_toggle_statuses)
 

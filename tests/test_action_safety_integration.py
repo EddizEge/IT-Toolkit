@@ -8,11 +8,15 @@ from unittest.mock import Mock, patch
 
 from PySide6.QtWidgets import QApplication
 
+from app_v2.action_confirmation import OperationConfirmation
 from app_v2.pages.quick_access import QuickAccessPage
 from app_v2.pages.tools_page import ToolsPage
 from app_v2.presets import TECHNICIAN_PRESETS
 from app_v2.registry import ACTION_LOOKUP, NETWORK_TOGGLES, ToolAction
-from app_v2.services.action_safety import execution_plan_for_action
+from app_v2.services.action_safety import (
+    build_undo_plan,
+    execution_plan_for_action,
+)
 from app_v2.services.audit_log import AuditLog
 from app_v2.services.preferences import ToolPreferences
 
@@ -30,6 +34,14 @@ class ActionSafetyIntegrationTests(unittest.TestCase):
         self.task_manager = Mock()
         self.task_manager.audit_log = self.audit_log
         self.task_manager.start_command.return_value = SimpleNamespace(
+            status="queued",
+            message="",
+        )
+        self.task_manager.start_undo.return_value = SimpleNamespace(
+            status="queued",
+            message="",
+        )
+        self.task_manager.start_protected_action.return_value = SimpleNamespace(
             status="queued",
             message="",
         )
@@ -56,6 +68,10 @@ class ActionSafetyIntegrationTests(unittest.TestCase):
         )
         self.widgets.append(page)
         return page
+
+    def _flush_events(self) -> None:
+        for _ in range(4):
+            self.app.processEvents()
 
     def test_cancelled_action_never_reaches_task_manager(self) -> None:
         action = ACTION_LOOKUP["sfc"][1]
@@ -96,10 +112,12 @@ class ActionSafetyIntegrationTests(unittest.TestCase):
             confirmation.call_args.args[1].confirmation_stages,
             2,
         )
-        self.task_manager.start_command.assert_called_once()
+        self.task_manager.start_protected_action.assert_called_once()
+        protected_call = self.task_manager.start_protected_action.call_args
         self.assertTrue(
-            self.task_manager.start_command.call_args.kwargs["admin"]
+            protected_call.args[0].admin_required
         )
+        self.task_manager.start_command.assert_not_called()
         events = self.audit_log.read_events(limit=10)
         self.assertEqual(
             [item["event"] for item in events],
@@ -107,9 +125,188 @@ class ActionSafetyIntegrationTests(unittest.TestCase):
         )
         self.assertEqual(events[-1]["approval_mode"], "user")
         self.assertEqual(
-            self.task_manager.start_command.call_args.kwargs["plan_id"],
+            protected_call.args[0].plan_id,
             events[-1]["plan_id"],
         )
+        self.assertEqual(
+            protected_call.kwargs["restore_point_status"],
+            "skipped",
+        )
+
+    def test_verified_restore_point_starts_main_action_after_success(self) -> None:
+        action = ACTION_LOOKUP["rdp"][1]
+        page = self._tools_page(action.key)
+        restore_task = SimpleNamespace(
+            id="restore-task",
+            status="running",
+            message="",
+        )
+        self.task_manager.start_restore_point.return_value = restore_task
+
+        with patch(
+            "app_v2.pages.tools_page.confirm_operation",
+            return_value=OperationConfirmation(True, True),
+        ):
+            page.execute_action(action)
+
+        self.task_manager.start_restore_point.assert_called_once()
+        self.task_manager.start_command.assert_not_called()
+
+        restore_task.status = "succeeded"
+        restore_task.message = "Doğrulandı"
+        page._on_restore_task_updated(restore_task)
+        self._flush_events()
+
+        self.task_manager.start_protected_action.assert_called_once()
+        self.assertEqual(
+            self.task_manager.start_protected_action.call_args.kwargs[
+                "restore_point_status"
+            ],
+            "created",
+        )
+
+    def test_failed_restore_point_defaults_to_stopping_main_action(self) -> None:
+        action = ACTION_LOOKUP["rdp"][1]
+        page = self._tools_page(action.key)
+        restore_task = SimpleNamespace(
+            id="failed-restore-task",
+            status="failed",
+            message="Doğrulama zaman aşımına uğradı.",
+        )
+        self.task_manager.start_restore_point.return_value = restore_task
+
+        with (
+            patch(
+                "app_v2.pages.tools_page.confirm_operation",
+                return_value=OperationConfirmation(True, True),
+            ),
+            patch(
+                "app_v2.pages.tools_page.confirm_without_restore_point",
+                return_value=False,
+            ) as override,
+        ):
+            page.execute_action(action)
+            self._flush_events()
+
+        override.assert_called_once()
+        self.task_manager.start_command.assert_not_called()
+        self.assertEqual(
+            [
+                item["event"]
+                for item in self.audit_log.read_events(limit=10)
+            ],
+            ["prepared", "approved", "cancelled"],
+        )
+
+    def test_failed_restore_requires_explicit_override_before_main_action(
+        self,
+    ) -> None:
+        action = ACTION_LOOKUP["rdp"][1]
+        page = self._tools_page(action.key)
+        restore_task = SimpleNamespace(
+            id="override-restore-task",
+            status="failed",
+            message="Windows noktayı doğrulayamadı.",
+        )
+        self.task_manager.start_restore_point.return_value = restore_task
+
+        with (
+            patch(
+                "app_v2.pages.tools_page.confirm_operation",
+                return_value=OperationConfirmation(True, True),
+            ),
+            patch(
+                "app_v2.pages.tools_page.confirm_without_restore_point",
+                return_value=True,
+            ),
+        ):
+            page.execute_action(action)
+            self._flush_events()
+
+        self.task_manager.start_protected_action.assert_called_once()
+        self.assertEqual(
+            self.task_manager.start_protected_action.call_args.kwargs[
+                "restore_point_status"
+            ],
+            "failed_override",
+        )
+        self.assertEqual(
+            [
+                item["event"]
+                for item in self.audit_log.read_events(limit=10)
+            ],
+            ["prepared", "approved", "recovery_override"],
+        )
+
+    def test_closing_page_cancels_deferred_main_action(self) -> None:
+        action = ACTION_LOOKUP["rdp"][1]
+        page = self._tools_page(action.key)
+        restore_task = SimpleNamespace(
+            id="closing-restore-task",
+            status="running",
+            message="",
+        )
+        self.task_manager.start_restore_point.return_value = restore_task
+
+        with patch(
+            "app_v2.pages.tools_page.confirm_operation",
+            return_value=OperationConfirmation(True, True),
+        ):
+            page.execute_action(action)
+
+        restore_task.status = "succeeded"
+        restore_task.message = "Doğrulandı"
+        page._on_restore_task_updated(restore_task)
+        page.close()
+        self._flush_events()
+
+        self.task_manager.start_command.assert_not_called()
+        self.assertEqual(
+            [
+                item["event"]
+                for item in self.audit_log.read_events(limit=10)
+            ],
+            ["prepared", "approved", "cancelled"],
+        )
+
+    def test_undo_plan_uses_dedicated_task_manager_gate(self) -> None:
+        page = self._tools_page("shutdown_schedule")
+        plan = build_undo_plan(
+            action_key="shutdown_schedule",
+            undo_key="shutdown_cancel",
+            parent_plan_id="2" * 32,
+        )
+        self.assertIsNotNone(plan)
+        assert plan is not None
+
+        with patch(
+            "app_v2.pages.tools_page.confirm_operation",
+            return_value=True,
+        ):
+            self.assertTrue(page.execute_plan(plan))
+
+        self.task_manager.start_undo.assert_called_once_with(plan)
+        self.task_manager.start_command.assert_not_called()
+
+    def test_manual_restore_uses_verified_service_not_raw_command(self) -> None:
+        action = ACTION_LOOKUP["restore"][1]
+        page = self._tools_page(action.key)
+        self.task_manager.start_manual_restore.return_value = SimpleNamespace(
+            status="queued",
+            message="",
+        )
+
+        with patch(
+            "app_v2.pages.tools_page.confirm_operation",
+            return_value=True,
+        ):
+            page.execute_action(action)
+
+        self.task_manager.start_manual_restore.assert_called_once()
+        self.task_manager.start_command.assert_not_called()
+        call = self.task_manager.start_manual_restore.call_args
+        self.assertEqual(call.kwargs["action_key"], "restore")
+        self.assertRegex(call.kwargs["plan_id"], r"^[0-9a-f]{32}$")
 
     def test_cancelled_toggle_never_starts_command(self) -> None:
         smb1 = next(

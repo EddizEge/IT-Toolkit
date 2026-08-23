@@ -34,10 +34,12 @@ from app_v2.pages.search import SearchPage
 from app_v2.pages.system import SystemPage
 from app_v2.pages.tasks import TaskCenterPage
 from app_v2.pages.tools_page import ToolsPage
-from app_v2.registry import ToolAction
+from app_v2.registry import TOGGLE_LOOKUP, ToolAction
+from app_v2.services.action_safety import build_undo_plan
 from app_v2.services.command_runner import is_running_as_admin
 from app_v2.services.error_logging import get_logger
 from app_v2.services.preferences import ToolPreferences
+from app_v2.services.settings_service import get_toggle_status
 from app_v2.services.system_monitor import FunctionWorker
 from app_v2.services.task_manager import ACTIVE_STATUSES, TaskManager
 from app_v2.services.update_service import ReleaseInfo, check_for_update
@@ -295,6 +297,8 @@ class MainWindow(QMainWindow):
             if isinstance(page, QuickAccessPage):
                 page.status_message.connect(self.show_status)
                 page.action_requested.connect(self._run_search_result)
+            if isinstance(page, TaskCenterPage):
+                page.undo_requested.connect(self._run_undo)
             if isinstance(page, FeedbackPage):
                 page.status_message.connect(self.show_status)
             if isinstance(page, SearchPage):
@@ -376,6 +380,64 @@ class MainWindow(QMainWindow):
         self.search.clear()
         self.search.blockSignals(False)
         self.show_page("tasks")
+
+    def _run_undo(self, task_id: str) -> None:
+        task = self.task_manager.task(task_id)
+        if (
+            task is None
+            or task.status != "succeeded"
+            or task.undo_state != "available"
+            or not task.undo_key
+            or not task.plan_id
+        ):
+            self.show_status(
+                "Geri alma artık kullanılamıyor; görev durumu değişmiş olabilir.",
+                False,
+            )
+            return
+
+        if task.action_key.startswith("toggle:"):
+            parts = task.action_key.split(":")
+            toggle = TOGGLE_LOOKUP.get(parts[1]) if len(parts) == 3 else None
+            current, status = (
+                get_toggle_status(toggle.key)
+                if toggle is not None
+                else (None, "Ayar kaydı bulunamadı")
+            )
+            expected = len(parts) == 3 and parts[2] == "on"
+            if current is None or current != expected:
+                self.task_manager.invalidate_undo(task.id)
+                self.show_status(
+                    f"{task.title}: ayarın mevcut durumu değişti ({status}); "
+                    "otomatik geri alma güvenlik için kapatıldı.",
+                    False,
+                )
+                return
+
+        plan = build_undo_plan(
+            action_key=task.action_key,
+            undo_key=task.undo_key,
+            parent_plan_id=task.plan_id,
+        )
+        if plan is None:
+            self.task_manager.invalidate_undo(task.id)
+            self.show_status(
+                f"{task.title}: kayıtlı geri alma planı doğrulanamadı.",
+                False,
+            )
+            return
+        system_page = self._ensure_page("system")
+        task_center = self._ensure_page("tasks")
+        if not isinstance(system_page, SystemPage):
+            self.show_status("Geri alma ekranı hazırlanamadı.", False)
+            return
+        system_page.execute_plan(
+            plan,
+            record_recent=False,
+            dialog_parent=task_center,
+        )
+        if isinstance(task_center, TaskCenterPage):
+            task_center.show_task(task.id)
 
     def _open_feedback(self) -> None:
         self.search.blockSignals(True)
@@ -466,5 +528,8 @@ class MainWindow(QMainWindow):
         dashboard = self._pages.get("dashboard")
         if isinstance(dashboard, DashboardPage):
             dashboard.monitor.stop()
+        for page in tuple(self._pages.values()):
+            if isinstance(page, ToolsPage):
+                page.cancel_pending_recovery()
         self.task_manager.shutdown()
         super().closeEvent(event)

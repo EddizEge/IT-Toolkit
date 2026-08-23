@@ -21,6 +21,13 @@ izler ve proje [SemVer](https://semver.org/) kullanır.
   `plan_id` korelasyonu
 - Görev Merkezi ayrıntısında kısa, araç ipucu ve dışa aktarılan görev raporunda
   tam denetim kimliği görünürlüğü
+- Uzak Masaüstü ve SMBv1 açma işlemleri için kullanıcı tercihli, yeni nokta
+  kimliği ve sıra numarasıyla doğrulanan Windows geri yükleme noktası akışı
+- Windows Update, hazırda bekletme, SMBv1 ve USB yazma korumasında doğrulanmış
+  önceki duruma; zamanlı kapatmada kayıtlı iptal eylemine dayanan güvenli geri
+  alma planları
+- Görev Merkezi'nde yalnız uygun başarılı görevlerde etkinleşen “Değişikliği
+  geri al” düğmesi ile geri yükleme ve geri alma durum görünürlüğü
 
 ### Değiştirildi
 
@@ -39,6 +46,12 @@ izler ve proje [SemVer](https://semver.org/) kullanır.
   kapanışta yeniden deneniyor; denetim sonucu bekleyen görevler temizleme ve
   geçmiş sınırlandırması sırasında korunuyor
 - Eski görev geçmişi doğrulanmış terminal denetim sonucuyla uzlaştırılıyor
+- Geri yükleme ve geri alma çocuk işlemleri yeni `plan_id` ile oluşturuluyor ve
+  `parent_plan_id` üzerinden ana işleme bağlanıyor
+- Klasör sahipliği yerel Yöneticiler grubunu locale bağımsız SID ile hedefliyor;
+  sürücü, UNC paylaşım ve Windows sistem kökleri toplu değişiklikten korunuyor
+- Güvenli Mod başlatma akışı kalıcı BCD zorlaması yerine Windows'un tek açılışlık
+  Başlangıç Ayarları seçimine taşındı
 
 ### Güvenlik
 
@@ -57,6 +70,29 @@ izler ve proje [SemVer](https://semver.org/) kullanır.
   anahtarları sıkı şema doğrulamasından geçiriliyor
 - Access/refresh token, client secret, Basic/Bearer kimlik doğrulaması, URI
   kullanıcı bilgisi, IPv6 ve UNC yolları ortak paylaşım filtresinde maskeleniyor
+- Geri yükleme noktası yalnız yeni ve tam eşleşen kayıt görüldüğünde başarılı
+  sayılıyor; doğrulama başarısızlığında ana işlem varsayılan olarak duruyor
+- Geri alma yalnız yerelde doğrulanmış başarıdan sonra ve güncel ayar durumu
+  değişmemişse çalışıyor; harici UAC devri hiçbir zaman başarı sayılmıyor
+- Geri alma çocuk planı merkezi kayıtla eylem, komut, yetki, başarı kodu ve etki
+  düzeyinde birebir doğrulanıyor; normal görev API'si üst işlem bağı kabul etmiyor
+- Restore, korumalı RDP/SMB ve geri alma yürütücüleri PowerShell ile yerel
+  Windows araçlarını doğrulanmış mutlak System32 yollarından başlatıyor; bu
+  akışlarda geçici komut dosyası veya PATH çözümlemesi kullanılmıyor. Genel
+  görev kabuğu ve süreç ağacı temizleyicisi de mutlak `cmd.exe` ve
+  `taskkill.exe` yollarını kullanıyor
+- Toggle geri alma önkoşulları yükseltilmiş çocuk süreçte ilk değişiklikten
+  hemen önce yeniden doğrulanıyor; sorgu hatası, zaman aşımı veya durum
+  uyuşmazlığı yan etki oluşturmadan görevi durduruyor
+- Daha önce yürütülmüş plan kimlikleri yeniden kullanılamıyor; bozuk geçmişteki
+  yinelenen kök plan kimliklerinin geri alma durumu güvenli biçimde `unknown`
+  yapılıyor
+- Restore cmdlet'leri doğrulanmış `Microsoft.PowerShell.Management`
+  manifestinden tam modül adıyla çağrılıyor
+- Çöken doğrulayıcı süreç başarı kodu döndürse bile geri yükleme noktası başarılı
+  sayılmıyor; uygulama kapanırken bekleyen ana işlemler iptal ediliyor
+- Sistem Koruması, geri yükleme sıklığı, kurum politikası ve VBS ayarları
+  uygulama tarafından sessizce değiştirilmiyor
 
 ### Kalite
 
@@ -67,9 +103,12 @@ izler ve proje [SemVer](https://semver.org/) kullanır.
 - Paketlenmiş geliştirme EXE’sinde iki aşamalı onay akışı görsel olarak
   ve dinamik Winget paket planı doğrulandı; test sırasında hiçbir Windows ayarı
   veya paketi değiştirilmedi
-- Toplam 100 otomatik test başarıyla tamamlandı
+- Toplam 178 otomatik test başarıyla tamamlandı
 - JSONL alan izin listesi, maskeleme, dosya döndürme, eşzamanlı yazma, bozuk
   satır dayanıklılığı ve görev korelasyonu için Aşama C regresyon testleri eklendi
+- Restore doğrulaması, ikinci onay, parent/child korelasyonu, tek kullanımlık
+  geri alma, durum kayması, yeniden açılış ve Task Center görünürlüğü için Aşama
+  D regresyon testleri eklendi; gerçek Windows ayarı değiştirilmedi
 
 ## [0.6.0-beta.2] - 2026-08-21
 

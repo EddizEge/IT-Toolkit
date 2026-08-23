@@ -22,6 +22,8 @@ class ToolAction:
     impact: str = ""
     interruption: str = ""
     rollback: str = ""
+    restore_point_policy: str = "none"
+    undo_key: str = ""
 
 
 @dataclass(frozen=True)
@@ -38,6 +40,7 @@ class ToggleAction:
     impact_off: str = ""
     interruption: str = ""
     rollback: str = ""
+    restore_point_policy: str = "none"
 
 
 @dataclass(frozen=True)
@@ -123,9 +126,19 @@ SYSTEM_ACTIONS = (
         "Geri yükleme noktası oluştur",
         "Sistem ayarlarında değişiklik yapmadan önce geri dönüş noktası oluşturur.",
         "Analiz ve Gelişmiş İşlemler",
-        r'powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Checkpoint-Computer -Description \"IT_Toolkit_Yedek\" -RestorePointType \"MODIFY_SETTINGS\""',
+        "",
         admin=True,
         risk="caution",
+        handler="restore_point",
+        impact=(
+            "Windows sistem ayarları için yeni bir geri yükleme noktası "
+            "oluşturulup sonuç doğrulanacak."
+        ),
+        interruption="Kısa süreli disk ve Sistem Koruması etkinliği oluşabilir.",
+        rollback=(
+            "Oluşturulan nokta Windows Sistem Geri Yükleme aracından seçilebilir. "
+            "Bu işlem kişisel dosyaların yedeğini oluşturmaz."
+        ),
     ),
     ToolAction(
         "gpupdate",
@@ -152,6 +165,7 @@ SYSTEM_ACTIONS = (
             "RDP bağlantılarını yeniden kapatıp ilgili güvenlik duvarı "
             "kurallarını devre dışı bırakın."
         ),
+        restore_point_policy="optional",
     ),
 )
 
@@ -317,6 +331,7 @@ NETWORK_TOGGLES = (
         impact_off="Eski SMBv1 protokolü devre dışı bırakılacak.",
         interruption="Değişikliğin tamamlanması için yeniden başlatma gerekebilir.",
         rollback="Ayar ters yönde değiştirilerek önceki duruma döndürülebilir.",
+        restore_point_policy="optional",
     ),
 )
 
@@ -360,24 +375,53 @@ QUICK_ACTIONS = (
         interruption="Etkilenen uygulamalar hemen kapanır.",
         rollback="Kaydedilmemiş uygulama verileri geri getirilemez.",
     ),
-    ToolAction("shutdown_schedule", "Zamanlı kapatma ayarla", "Belirleyeceğiniz dakika sonunda bilgisayarı kapatır.", "Güç ve Güvenli Mod", "", handler="shutdown_schedule", risk="caution"),
+    ToolAction(
+        "shutdown_schedule",
+        "Zamanlı kapatma ayarla",
+        "Belirleyeceğiniz dakika sonunda bilgisayarı kapatır.",
+        "Güç ve Güvenli Mod",
+        "",
+        handler="shutdown_schedule",
+        risk="caution",
+        rollback=(
+            "Görev Merkezi'ndeki “Değişikliği geri al” düğmesi bekleyen "
+            "Windows kapatma zamanlayıcısını iptal eder."
+        ),
+        undo_key="shutdown_cancel",
+    ),
     ToolAction("shutdown_cancel", "Zamanlı kapatmayı iptal et", "Bekleyen Windows kapatma zamanlayıcısını iptal eder.", "Güç ve Güvenli Mod", "shutdown -a", keep_open=False),
     ToolAction(
         "safe_mode_on",
-        "Sonraki açılışı Güvenli Mod yap",
-        "Windows'un sonraki açılışını ağ destekli Güvenli Mod olarak ayarlar.",
+        "Gelişmiş başlangıç seçeneklerini aç",
+        (
+            "Windows'u kurtarma ortamında yeniden başlatır; Başlangıç "
+            "Ayarları ekranından Güvenli Modu tek açılış için seçebilirsiniz."
+        ),
         "Güç ve Güvenli Mod",
-        r"bcdedit /set {default} safeboot network",
+        "shutdown /r /o /t 0",
         admin=True,
         risk="danger",
-        impact="Varsayılan Windows önyükleme kaydına Güvenli Mod zorlaması eklenecek.",
-        interruption="Bir sonraki yeniden başlatma Güvenli Modda gerçekleşir.",
+        impact=(
+            "Bilgisayar hemen Windows kurtarma ortamında yeniden başlatılacak. "
+            "Güvenli Mod seçimi Başlangıç Ayarları ekranında size bırakılacak."
+        ),
+        interruption=(
+            "Açık uygulamalar kapanır; kaydedilmemiş çalışmalar kaybolabilir."
+        ),
         rollback=(
-            "“Güvenli Mod zorlamasını kaldır” işlemiyle BCD ayarı geri "
-            "alınabilir."
+            "Kalıcı bir Güvenli Mod zorlaması eklenmez. Kurtarma ekranında "
+            "Devam seçilerek normal Windows açılışına dönülebilir."
         ),
     ),
-    ToolAction("safe_mode_off", "Güvenli Mod zorlamasını kaldır", "Zorunlu Güvenli Mod açılış ayarını kaldırır.", "Güç ve Güvenli Mod", r"bcdedit /deletevalue {default} safeboot", admin=True, risk="caution"),
+    ToolAction(
+        "safe_mode_off",
+        "Eski Güvenli Mod zorlamasını kaldır",
+        "Geçerli Windows açılışındaki kalıcı safeboot değerini kaldırır.",
+        "Güç ve Güvenli Mod",
+        r"bcdedit /deletevalue {current} safeboot",
+        admin=True,
+        risk="caution",
+    ),
 )
 
 
@@ -625,6 +669,11 @@ ACTION_LOOKUP = {
     action.key: (page_key, action)
     for page_key, actions in PAGE_ACTIONS.items()
     for action in actions
+}
+
+TOGGLE_LOOKUP = {
+    toggle.key: toggle
+    for toggle in SYSTEM_TOGGLES + NETWORK_TOGGLES + DATA_TOGGLES
 }
 
 
