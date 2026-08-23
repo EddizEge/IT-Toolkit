@@ -212,6 +212,28 @@ def impact_for_toggle(
     )
 
 
+def execution_plan_for_toggle(
+    toggle: ToggleAction,
+    enabled: bool,
+) -> ExecutionPlan:
+    impact = impact_for_toggle(toggle, enabled)
+    command = toggle.command_on if enabled else toggle.command_off
+    if not command.strip():
+        raise ValueError(f"Çalıştırılabilir ayar planı boş: {toggle.key}")
+    return ExecutionPlan(
+        plan_id=uuid.uuid4().hex,
+        action_key=impact.key,
+        title=toggle.title,
+        category="Windows temel ayarları",
+        command=command,
+        urls=(),
+        admin_required=True,
+        keep_open=False,
+        success_codes=(0,),
+        impact=impact,
+    )
+
+
 def impact_for_preset(preset: TechnicianPreset) -> OperationImpact:
     _validate_risk(preset.risk)
     return OperationImpact(
@@ -231,4 +253,22 @@ def impact_for_preset(preset: TechnicianPreset) -> OperationImpact:
             preset.risk,
             admin_required=preset.admin,
         ),
+    )
+
+
+def execution_plan_for_preset(preset: TechnicianPreset) -> ExecutionPlan:
+    if not preset.command.strip():
+        raise ValueError(f"Çalıştırılabilir hazır akış planı boş: {preset.key}")
+    impact = impact_for_preset(preset)
+    return ExecutionPlan(
+        plan_id=uuid.uuid4().hex,
+        action_key=impact.key,
+        title=preset.title,
+        category="Teknisyen hazır akışları",
+        command=preset.command,
+        urls=(),
+        admin_required=preset.admin,
+        keep_open=False,
+        success_codes=(0,),
+        impact=impact,
     )

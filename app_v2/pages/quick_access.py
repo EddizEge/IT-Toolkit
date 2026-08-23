@@ -14,7 +14,11 @@ from PySide6.QtWidgets import (
 from app_v2.action_confirmation import confirm_operation
 from app_v2.presets import TECHNICIAN_PRESETS, TechnicianPreset
 from app_v2.registry import ToolAction, find_action
-from app_v2.services.action_safety import impact_for_preset
+from app_v2.services.action_safety import (
+    ExecutionPlan,
+    execution_plan_for_preset,
+)
+from app_v2.services.audit_log import AuditLog
 from app_v2.services.preferences import ToolPreferences
 from app_v2.services.task_manager import TaskManager
 from app_v2.widgets import clear_layout
@@ -208,14 +212,39 @@ class QuickAccessPage(QWidget):
         return row
 
     def _run_preset(self, preset: TechnicianPreset) -> None:
-        if not confirm_operation(self, impact_for_preset(preset)):
+        plan = execution_plan_for_preset(preset)
+        if not self._record_plan_event("prepared", plan) and (
+            plan.admin_required or plan.impact.risk != "normal"
+        ):
+            self._report_audit_block(plan)
+            return
+        if not confirm_operation(self, plan.impact):
+            self._record_plan_event("cancelled", plan)
+            return
+        approved = self._record_plan_event(
+            "approved",
+            plan,
+            approval_mode=(
+                "automatic"
+                if plan.impact.confirmation_stages == 0
+                else "user"
+            ),
+        )
+        if not approved and (
+            plan.admin_required or plan.impact.risk != "normal"
+        ):
+            self._report_audit_block(plan)
             return
         task = self.task_manager.start_command(
-            preset.title,
-            preset.command,
-            category="Teknisyen hazır akışları",
-            admin=preset.admin,
-            keep_open=False,
+            plan.title,
+            plan.command,
+            category=plan.category,
+            admin=plan.admin_required,
+            keep_open=plan.keep_open,
+            success_codes=plan.success_codes,
+            plan_id=plan.plan_id,
+            action_key=plan.action_key,
+            risk=plan.impact.risk,
         )
         ok = task.status not in {"failed", "cancelled", "interrupted"}
         message = (
@@ -224,3 +253,29 @@ class QuickAccessPage(QWidget):
             else "Görev Merkezi'ne eklendi."
         )
         self.status_message.emit(f"{preset.title}: {message}", ok)
+
+    def _record_plan_event(
+        self,
+        event: str,
+        plan: ExecutionPlan,
+        *,
+        approval_mode: str = "",
+    ) -> bool:
+        audit_log = getattr(self.task_manager, "audit_log", None)
+        if not isinstance(audit_log, AuditLog):
+            return False
+        try:
+            return audit_log.record_plan(
+                event,
+                plan,
+                approval_mode=approval_mode,
+            )
+        except ValueError:
+            return False
+
+    def _report_audit_block(self, plan: ExecutionPlan) -> None:
+        self.status_message.emit(
+            f"{plan.title}: denetim günlüğüne yazılamadığı için hazır akış "
+            "başlatılmadı. Yerel depolama izinlerini ve boş alanı kontrol edin.",
+            False,
+        )

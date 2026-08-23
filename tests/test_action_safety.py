@@ -17,6 +17,8 @@ from app_v2.services.action_safety import (
     OperationImpact,
     confirmation_stage_count,
     execution_plan_for_action,
+    execution_plan_for_preset,
+    execution_plan_for_toggle,
     impact_for_action,
     impact_for_preset,
     impact_for_toggle,
@@ -110,6 +112,21 @@ class ActionSafetyTests(unittest.TestCase):
 
         self.assertEqual(impact.confirmation_stages, 1)
         self.assertTrue(impact.admin_required)
+
+    def test_toggle_and_preset_plans_get_correlation_ids(self) -> None:
+        smb1 = next(toggle for toggle in NETWORK_TOGGLES if toggle.key == "smb1")
+        preset = next(
+            item for item in TECHNICIAN_PRESETS if item.key == "network_repair"
+        )
+
+        toggle_plan = execution_plan_for_toggle(smb1, True)
+        preset_plan = execution_plan_for_preset(preset)
+
+        self.assertRegex(toggle_plan.plan_id, r"^[0-9a-f]{32}$")
+        self.assertEqual(toggle_plan.action_key, "toggle:smb1:on")
+        self.assertTrue(toggle_plan.admin_required)
+        self.assertRegex(preset_plan.plan_id, r"^[0-9a-f]{32}$")
+        self.assertEqual(preset_plan.action_key, "preset:network_repair")
 
     def test_unknown_risk_is_rejected(self) -> None:
         with self.assertRaises(ValueError):

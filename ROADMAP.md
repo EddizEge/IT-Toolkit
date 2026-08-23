@@ -120,16 +120,17 @@ raporu ekleyebiliyor; kullanıcılar maskelenmiş hata/öneri raporunu GitHub
 
 ## v0.7.0-beta — Güvenli yetkili işlemler
 
-**Durum:** Geliştiriliyor — Aşama A ve B tamamlandı (23 Ağustos 2026)
+**Durum:** Geliştiriliyor — Aşama A, B ve C tamamlandı (23 Ağustos 2026)
 
 **Hedef:** Yönetici işlemlerini daha kontrollü ve geri alınabilir yapmak.
 
-- Ayrı, dar kapsamlı yetkili yardımcı süreç
-- İşlem öncesi etki özeti
-- Uygun görevlerde geri alma adımı
-- Otomatik geri yükleme noktası seçeneği
-- Denetim günlüğü
-- Kritik görevler için iki aşamalı onay
+- [x] İşlem öncesi etki özeti ve kritik görevler için iki aşamalı onay
+- [x] Gerçek hedefi ve yetkiyi taşıyan parametreye duyarlı işlem planı
+- [x] `plan_id` bağlantılı, dönen ve hassas veri içermeyen denetim günlüğü
+- [x] Görev Merkezi’nde denetim kimliği görünürlüğü
+- [ ] Uygun görevlerde geri alma adımı
+- [ ] Otomatik geri yükleme noktası seçeneği
+- [ ] Ayrı, dar kapsamlı yetkili yardımcı süreç
 
 **Çıkış ölçütü:** Yetki yükseltme yalnızca gerektiğinde yapılmalı ve kritik
 değişiklikler denetlenebilir olmalı.

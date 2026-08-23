@@ -51,6 +51,58 @@ class ErrorLoggingTests(unittest.TestCase):
             finally:
                 close_logging()
 
+    def test_extended_network_path_and_secret_values_are_masked(self) -> None:
+        content = (
+            r"C:\Users\Other User\Desktop \\fileserver\private\report.txt "
+            "fe80::1 Bearer abc.def.ghi password=\"two words\" "
+            "https://example.test/?token=url-secret"
+        )
+
+        sanitized = sanitize_text(content, personal_values=())
+
+        for secret in (
+            "Other User",
+            "fileserver",
+            "fe80::1",
+            "abc.def.ghi",
+            "two words",
+            "url-secret",
+        ):
+            self.assertNotIn(secret, sanitized)
+        self.assertIn("<IPV6_ADRESI>", sanitized)
+        self.assertIn("<KULLANICI_PROFILI>", sanitized)
+
+    def test_authentication_and_uri_secrets_are_masked(self) -> None:
+        content = (
+            "access_token=access-value refresh-token='refresh value' "
+            'client_secret="client value" api key = "api value" '
+            "Authorization: Basic dXNlcjpwYXNz "
+            "postgres://dbuser:dbpass@db.example/app "
+            "https://example.test/callback?access_token=url-access"
+            "&code=oauth-code&client_secret=url-client "
+            '"\\\\File Server\\Client Data\\report.txt"'
+        )
+
+        sanitized = sanitize_text(content, personal_values=())
+
+        for secret in (
+            "access-value",
+            "refresh value",
+            "client value",
+            "api value",
+            "dXNlcjpwYXNz",
+            "dbuser",
+            "dbpass",
+            "url-access",
+            "oauth-code",
+            "url-client",
+            "File Server",
+            "Client Data",
+        ):
+            self.assertNotIn(secret, sanitized)
+        self.assertIn("<MASKELENDI>", sanitized)
+        self.assertIn("<UNC_YOLU>", sanitized)
+
 
 if __name__ == "__main__":
     unittest.main()

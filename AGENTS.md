@@ -43,6 +43,7 @@ IT-Toolkit/
 │   │   └── feedback.py         # GitHub geri bildirim ve günlük önizleme ekranı
 │   └── services/               # Görev, komut, tercih, sağlık ve sistem servisleri
 │       ├── action_safety.py    # Risk politikası, etki ve değişmez işlem planı
+│       ├── audit_log.py        # Dönen, maskeli JSONL işlem denetim günlüğü
 │       ├── error_logging.py    # Dönen yerel log ve hassas veri maskeleme
 │       ├── feedback_service.py # Rapor metni ve GitHub issue bağlantısı
 │       └── update_service.py   # GitHub Release, SHA-256 ve EXE değiştirme
@@ -135,6 +136,37 @@ yardımcılar kullanılmalıdır.
 - Geçici komut dosyaları başarı, hata ve iptal sonunda temizlenmelidir.
 - UAC ile ayrı sürece devredilen görevlerin canlı çıktısının yakalanamadığı
   arayüzde açıkça belirtilmelidir.
+
+### İşlem denetim günlüğü
+
+`app_v2/services/audit_log.py`, v0.7 işlem planlarının yaşam döngüsünü
+`%LOCALAPPDATA%\IT Toolkit\audit\operations.jsonl` altında dönen yerel JSONL
+kayıtlarıyla izler. `ExecutionPlan.plan_id`, hazırlama aşamasından görev
+sonucuna kadar bütün olayların ortak korelasyon kimliğidir; her JSONL satırı
+ayrıca kendi benzersiz `event_id` değerini taşır.
+
+- Hazırlama, kullanıcı vazgeçmesi, onay, görev başlangıcı, iptal isteği, UAC
+  devri ve sonuç olayları aynı `plan_id` ile ilişkilendirilmelidir.
+- Denetim kayıtları yalnızca izin verilen yapılandırılmış alanları içermeli;
+  komut, görev çıktısı, URL veya gerçek hedef hiçbir koşulda yazılmamalıdır.
+- Başlık ve kategori gibi kullanıcıya görünen alanlar yazılmadan önce ortak
+  hassas veri maskelemesinden geçmelidir.
+- Olay ve durum alanları birbiriyle uyumlu olmalı; plan bağlantılı görev
+  kimlikleri uygulamanın ürettiği 32 karakterli küçük hexadecimal biçimden
+  sapmamalıdır.
+- Yönetici isteyen veya risk seviyesi `normal` olmayan işlem, zorunlu hazırlama
+  ya da onay kaydı yazılamıyorsa güvenli biçimde başlatılmamalıdır.
+- Geçici sonuç yazma hataları sınırlı artan aralıklarla aynı oturumda ve
+  kapanışta yeniden denenmeli; sonucu henüz yazılamayan görevler geçmiş
+  temizliği veya sınırlandırması sırasında korunmalıdır.
+- Geçmiş ile günlük çelişirse doğrulanmış terminal günlük sonucu kullanılmalıdır.
+- UAC'ye devredilen görev `delegated` olarak kaydedilmeli; harici sürecin gerçek
+  tamamlanma sonucu yakalanmış gibi gösterilmemelidir.
+- `TaskRecord.plan_id` eski görev geçmişleriyle geriye uyumludur. Bozuk bir
+  kayıt bütün görev geçmişinin yüklenmesini engellememelidir.
+- Görev Merkezi listesi kimlikle kalabalıklaştırılmamalı; seçili görevde kısa
+  denetim kimliği, araç ipucunda ve dışa aktarılan raporda tam kimlik
+  gösterilmelidir.
 
 ### Sistem izleme ve akıllı tanılama
 
@@ -321,6 +353,8 @@ parçasıdır.
 - [ ] Yalnızca güvenilir/resmi kaynaklar kullanılıyor.
 - [ ] Testler ve lint başarılı.
 - [ ] Yeni hata yolları yerel günlüğe güvenli biçimde yansıyor.
+- [ ] Yetkili ve riskli işlemlerin `plan_id` bağlantılı denetim olayları
+      hassas veri içermeden kaydediliyor.
 - [ ] Açık GitHub uygulama geri bildirimleri kontrol edildi.
 - [ ] Güncelleme varlık adı ve SHA-256 doğrulaması kontrol edildi.
 - [ ] İlgili belge ve sürüm notları güncel.

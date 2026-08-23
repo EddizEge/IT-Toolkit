@@ -107,9 +107,12 @@ class TaskCenterPage(QWidget):
         layout.addWidget(splitter, 1)
 
         privacy = QLabel(
-            "Görev geçmişi yalnızca bu bilgisayarda tutulur ve en fazla 100 kayıt saklanır."
+            "Görev geçmişi yalnızca bu bilgisayarda tutulur ve en fazla 100 "
+            "kayıt saklanır. Denetim izi komut, çıktı, URL veya gerçek hedef "
+            "içermez."
         )
         privacy.setObjectName("Muted")
+        privacy.setWordWrap(True)
         layout.addWidget(privacy)
 
         self.manager.task_added.connect(self._on_task_added)
@@ -302,6 +305,7 @@ class TaskCenterPage(QWidget):
             self.status.setText("—")
             self._set_status_property("unknown")
             self.meta.setText("Görev ayrıntıları burada görüntülenecek.")
+            self.meta.setToolTip("")
             self.progress.setRange(0, 100)
             self.progress.setValue(0)
             self.output.clear()
@@ -311,10 +315,17 @@ class TaskCenterPage(QWidget):
         self.detail_title.setText(task.title)
         self.status.setText(status_text(task.status))
         self._set_status_property(self._status_property(task.status))
+        short_plan_id = task.plan_id[:12] if task.plan_id else "—"
         self.meta.setText(
             f"{task.category}  •  Başlangıç: {task.started_at or task.created_at}"
             f"  •  Çıkış kodu: {task.exit_code if task.exit_code is not None else '—'}"
+            f"\nDenetim kimliği: {short_plan_id}"
             f"\n{task.message or 'Görev sıraya alındı.'}"
+        )
+        self.meta.setToolTip(
+            f"Tam denetim kimliği: {task.plan_id}"
+            if task.plan_id
+            else "Bu eski görev için denetim kimliği bulunmuyor."
         )
         if task.status in ACTIVE_STATUSES and task.progress is None:
             self.progress.setRange(0, 0)

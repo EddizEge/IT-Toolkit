@@ -19,9 +19,10 @@ from app_v2.registry import ToggleAction, ToolAction
 from app_v2.services.action_safety import (
     ExecutionPlan,
     execution_plan_for_action,
+    execution_plan_for_toggle,
     impact_for_action,
-    impact_for_toggle,
 )
+from app_v2.services.audit_log import AuditLog
 from app_v2.services.preferences import ToolPreferences
 from app_v2.services.settings_service import get_toggle_status
 from app_v2.services.task_manager import TaskManager
@@ -155,6 +156,13 @@ class ToolsPage(QWidget):
         if action.handler:
             ui_handler = self._ui_handlers.get(action.handler)
             if ui_handler:
+                if action.admin or action.risk != "normal":
+                    self.status_message.emit(
+                        f"{action.title}: güvenlik gerektiren arayüz işlemi "
+                        "işlem planı olmadan başlatılamaz.",
+                        False,
+                    )
+                    return
                 if not confirm_operation(self, impact_for_action(action)):
                     return
                 if ui_handler(action):
@@ -173,9 +181,34 @@ class ToolsPage(QWidget):
             return
         self._execute_plan(execution_plan_for_action(action))
 
-    def _execute_plan(self, plan: ExecutionPlan) -> bool:
-        if not confirm_operation(self, plan.impact):
+    def _execute_plan(
+        self,
+        plan: ExecutionPlan,
+        *,
+        record_recent: bool = True,
+    ) -> bool:
+        prepared = self._record_plan_event("prepared", plan)
+        if not prepared and self._requires_audit(plan):
+            self._report_audit_block(plan)
             return False
+        if not confirm_operation(self, plan.impact):
+            self._record_plan_event("cancelled", plan)
+            return False
+        approved = self._record_plan_event(
+            "approved",
+            plan,
+            approval_mode=(
+                "automatic"
+                if plan.impact.confirmation_stages == 0
+                else "user"
+            ),
+        )
+        if not approved and self._requires_audit(plan):
+            self._report_audit_block(plan)
+            return False
+        opened_urls = sum(
+            bool(QDesktopServices.openUrl(QUrl(url))) for url in plan.urls
+        )
         task = None
         if plan.command.strip():
             task = self.task_manager.start_command(
@@ -185,11 +218,12 @@ class ToolsPage(QWidget):
                 admin=plan.admin_required,
                 keep_open=plan.keep_open,
                 success_codes=plan.success_codes,
+                plan_id=plan.plan_id,
+                action_key=plan.action_key,
+                risk=plan.impact.risk,
             )
-        opened_urls = sum(
-            bool(QDesktopServices.openUrl(QUrl(url))) for url in plan.urls
-        )
-        self.record_recent(plan.action_key)
+        if record_recent:
+            self.record_recent(plan.action_key)
         if task is None:
             ok = opened_urls == len(plan.urls)
             message = (
@@ -205,6 +239,10 @@ class ToolsPage(QWidget):
                 message,
                 success=ok,
                 category=plan.category,
+                plan_id=plan.plan_id,
+                action_key=plan.action_key,
+                risk=plan.impact.risk,
+                admin=plan.admin_required,
             )
             self.status_message.emit(f"{plan.title}: {message}", ok)
             return True
@@ -216,6 +254,36 @@ class ToolsPage(QWidget):
         )
         self.status_message.emit(f"{plan.title}: {message}", ok)
         return True
+
+    def _record_plan_event(
+        self,
+        event: str,
+        plan: ExecutionPlan,
+        *,
+        approval_mode: str = "",
+    ) -> bool:
+        audit_log = getattr(self.task_manager, "audit_log", None)
+        if not isinstance(audit_log, AuditLog):
+            return False
+        try:
+            return audit_log.record_plan(
+                event,
+                plan,
+                approval_mode=approval_mode,
+            )
+        except ValueError:
+            return False
+
+    @staticmethod
+    def _requires_audit(plan: ExecutionPlan) -> bool:
+        return plan.admin_required or plan.impact.risk != "normal"
+
+    def _report_audit_block(self, plan: ExecutionPlan) -> None:
+        self.status_message.emit(
+            f"{plan.title}: denetim günlüğüne yazılamadığı için işlem "
+            "başlatılmadı. Yerel depolama izinlerini ve boş alanı kontrol edin.",
+            False,
+        )
 
     def record_recent(self, action_key: str) -> None:
         if self.preferences:
@@ -231,23 +299,9 @@ class ToolsPage(QWidget):
         self.status_message.emit(f"{title}: {message}", ok)
 
     def _change_toggle(self, toggle: ToggleAction, enabled: bool) -> None:
-        if not confirm_operation(self, impact_for_toggle(toggle, enabled)):
-            return
-        task = self.task_manager.start_command(
-            toggle.title,
-            toggle.command_on if enabled else toggle.command_off,
-            category="Temel ayarlar",
-            admin=True,
-            keep_open=False,
-        )
-        ok = task.status != "failed"
-        message = (
-            task.message
-            if task.status in {"failed", "delegated"}
-            else "Ayar görevi başlatıldı."
-        )
-        self.status_message.emit(f"{toggle.title}: {message}", ok)
-        QTimer.singleShot(3_000, self.refresh_toggle_statuses)
+        plan = execution_plan_for_toggle(toggle, enabled)
+        if self._execute_plan(plan, record_recent=False):
+            QTimer.singleShot(3_000, self.refresh_toggle_statuses)
 
     def refresh_toggle_statuses(self) -> None:
         for key, row in self._toggle_rows.items():

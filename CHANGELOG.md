@@ -15,6 +15,12 @@ izler ve proje [SemVer](https://semver.org/) kullanır.
   bilgisini gösteren ortak onay penceresi
 - Kritik işlemlerde `ONAYLA` yazılmasını gerektiren ikinci son onay aşaması
 - Kritik araçlar ve SMBv1 yön değişiklikleri için açık etki/geri alma bilgileri
+- `%LOCALAPPDATA%\IT Toolkit\audit\` altında boyut sınırında dönen, maskelenmiş
+  ve yapılandırılmış JSONL işlem denetim günlüğü
+- Her satır için ayrı `event_id` ve işlem yaşam döngüsünü birleştiren ortak
+  `plan_id` korelasyonu
+- Görev Merkezi ayrıntısında kısa, araç ipucu ve dışa aktarılan görev raporunda
+  tam denetim kimliği görünürlüğü
 
 ### Değiştirildi
 
@@ -25,6 +31,14 @@ izler ve proje [SemVer](https://semver.org/) kullanır.
 - SMBv1 açma işlemi kritik, kapatma işlemi dikkat düzeyinde değerlendiriliyor
 - Sahiplik, boş alan temizleme, zamanlı kapatma ve toplu kurulum akışları
   parametreleri önce topluyor; gerçek hedef merkezi onayda gösteriliyor
+- Araç, temel ayar ve teknisyen hazır akışları hazırlama, onay, başlangıç, iptal,
+  UAC devri ve sonuç olaylarını aynı `plan_id` ile ilişkilendiriyor
+- Bozuk tek bir görev geçmişi veya denetim günlüğü satırı artık diğer geçerli
+  kayıtların yüklenmesini engellemiyor
+- Geçici sonuç yazma hataları sınırlı artan aralıklarla, aynı oturumda ve
+  kapanışta yeniden deneniyor; denetim sonucu bekleyen görevler temizleme ve
+  geçmiş sınırlandırması sırasında korunuyor
+- Eski görev geçmişi doğrulanmış terminal denetim sonucuyla uzlaştırılıyor
 
 ### Güvenlik
 
@@ -35,6 +49,14 @@ izler ve proje [SemVer](https://semver.org/) kullanır.
 - Winget paketi içeren dinamik kurulumlar çözümlenmiş yönetici gereksinimiyle UAC
   öncesi etki özetine giriyor; onay iptalinde paket veya bağlantı açılmıyor
 - Kayıtlı bir yönetici işleminin yetki gereksinimi işlem planında düşürülemiyor
+- Denetim günlüğüne komut, görev çıktısı, URL veya gerçek hedef yazılmıyor;
+  izin verilen metin alanları ortak hassas veri maskelemesinden geçiriliyor
+- Zorunlu denetim kaydı yazılamayan yetkili veya riskli işlem güvenli biçimde
+  engelleniyor ve kullanıcıya izleyebileceği sonraki adım gösteriliyor
+- Olay/durum birleşimleri, görev kimlikleri ve hassas veri içerebilecek işlem
+  anahtarları sıkı şema doğrulamasından geçiriliyor
+- Access/refresh token, client secret, Basic/Bearer kimlik doğrulaması, URI
+  kullanıcı bilgisi, IPv6 ve UNC yolları ortak paylaşım filtresinde maskeleniyor
 
 ### Kalite
 
@@ -45,7 +67,9 @@ izler ve proje [SemVer](https://semver.org/) kullanır.
 - Paketlenmiş geliştirme EXE’sinde iki aşamalı onay akışı görsel olarak
   ve dinamik Winget paket planı doğrulandı; test sırasında hiçbir Windows ayarı
   veya paketi değiştirilmedi
-- Toplam 72 otomatik test başarıyla tamamlandı
+- Toplam 100 otomatik test başarıyla tamamlandı
+- JSONL alan izin listesi, maskeleme, dosya döndürme, eşzamanlı yazma, bozuk
+  satır dayanıklılığı ve görev korelasyonu için Aşama C regresyon testleri eklendi
 
 ## [0.6.0-beta.2] - 2026-08-21
 

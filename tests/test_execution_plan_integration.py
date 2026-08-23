@@ -13,6 +13,7 @@ from app_v2.pages.data import DataPage
 from app_v2.pages.programs import ProgramsPage
 from app_v2.pages.quick import QuickPage
 from app_v2.registry import ACTION_LOOKUP, BASIC_PACKAGES
+from app_v2.services.audit_log import AuditLog
 from app_v2.services.preferences import ToolPreferences
 
 
@@ -27,6 +28,10 @@ class ExecutionPlanIntegrationTests(unittest.TestCase):
             path=Path(self.temp_dir.name) / "preferences.json"
         )
         self.task_manager = Mock()
+        self.audit_log = AuditLog(
+            Path(self.temp_dir.name) / "audit" / "operations.jsonl"
+        )
+        self.task_manager.audit_log = self.audit_log
         self.task_manager.start_command.return_value = SimpleNamespace(
             status="queued",
             message="",
@@ -69,6 +74,7 @@ class ExecutionPlanIntegrationTests(unittest.TestCase):
         confirmation.assert_not_called()
         self.task_manager.start_command.assert_not_called()
         self.assertEqual(self.preferences.recents, ())
+        self.assertEqual(self.audit_log.read_events(), ())
 
     def test_ownership_confirmation_contains_resolved_folder(self) -> None:
         page = self._data_page()
@@ -92,6 +98,13 @@ class ExecutionPlanIntegrationTests(unittest.TestCase):
         self.assertEqual(impact.confirmation_stages, 2)
         self.task_manager.start_command.assert_not_called()
         self.assertEqual(self.preferences.recents, ())
+        events = self.audit_log.read_events(limit=10)
+        self.assertEqual(
+            [item["event"] for item in events],
+            ["prepared", "cancelled"],
+        )
+        raw = self.audit_log.path.read_text(encoding="utf-8")
+        self.assertNotIn(target, raw)
 
     def test_wipe_confirmation_contains_resolved_drive(self) -> None:
         page = self._data_page()
@@ -203,6 +216,16 @@ class ExecutionPlanIntegrationTests(unittest.TestCase):
         self.assertTrue(call.kwargs["admin"])
         self.assertIn(package.package_id, call.args[1])
         self.assertEqual(self.preferences.recents, (action.key,))
+        events = self.audit_log.read_events(limit=10)
+        self.assertEqual(
+            [item["event"] for item in events],
+            ["prepared", "approved"],
+        )
+        self.assertEqual(call.kwargs["plan_id"], events[-1]["plan_id"])
+        self.assertNotIn(
+            package.package_id,
+            self.audit_log.path.read_text(encoding="utf-8"),
+        )
 
     def test_page_subclasses_cannot_bypass_the_plan_gate(self) -> None:
         pages_dir = Path(__file__).parents[1] / "app_v2" / "pages"

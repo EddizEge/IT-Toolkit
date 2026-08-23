@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ipaddress
 import logging
 import os
 import platform
@@ -27,8 +28,44 @@ IPV4_PATTERN = re.compile(
 MAC_PATTERN = re.compile(r"(?i)\b(?:[0-9A-F]{2}[:-]){5}[0-9A-F]{2}\b")
 PRODUCT_KEY_PATTERN = re.compile(r"(?i)\b(?:[A-Z0-9]{5}-){4}[A-Z0-9]{5}\b")
 SECRET_PATTERN = re.compile(
-    r"(?i)\b(password|parola|token|api[_-]?key|secret)\s*[:=]\s*([^\s,;]+)"
+    r"(?i)\b(password|parola|(?:access|refresh)[ _-]?token|"
+    r"client[ _-]?secret|token|api[ _-]?key|secret)\s*[:=]\s*"
+    r"(?:\"[^\"]*\"|'[^']*'|[^\s,;]+)"
 )
+BEARER_PATTERN = re.compile(r"(?i)\bBearer\s+[A-Z0-9._~+/=-]+")
+AUTHORIZATION_PATTERN = re.compile(
+    r"(?i)\b(Authorization\s*:\s*(?:Basic|Bearer))\s+[^\s,;]+"
+)
+URI_USERINFO_PATTERN = re.compile(
+    r"(?i)\b([A-Z][A-Z0-9+.-]{1,31}://)[^/\s:@]+:[^@/\s]+@"
+)
+URL_SECRET_PATTERN = re.compile(
+    r"(?i)([?&](?:token|(?:access|refresh)[_-]?token|client[_-]?secret|"
+    r"api[_-]?key|secret|password|parola|code|authorization|auth)=)[^&#\s]+"
+)
+USER_PROFILE_PATTERN = re.compile(
+    r"(?i)\b[A-Z]:[\\/]Users[\\/][^\\/\r\n]+"
+)
+UNC_ROOT_PATTERN = re.compile(r"(?i)\\\\[^\\\s]+\\[^\\\s]+")
+UNC_SPACED_ROOT_PATTERN = re.compile(
+    r"(?i)\\\\[^\\\r\n]{1,128}?\\[^\\\r\n]{1,128}?(?=\\)"
+)
+QUOTED_UNC_PATTERN = re.compile(
+    r'''(?i)(?:"\\\\[^"\r\n]+"|'\\\\[^'\r\n]+')'''
+)
+IPV6_CANDIDATE_PATTERN = re.compile(
+    r"(?i)(?<![0-9A-F:])(?:[0-9A-F]{0,4}:){2,7}[0-9A-F]{0,4}"
+    r"(?![0-9A-F:])"
+)
+
+
+def _mask_ipv6(match: re.Match[str]) -> str:
+    candidate = match.group(0)
+    try:
+        ipaddress.IPv6Address(candidate)
+    except ValueError:
+        return candidate
+    return "<IPV6_ADRESI>"
 
 
 def default_log_directory() -> Path:
@@ -122,6 +159,7 @@ def sanitize_text(
                 os.environ.get("USERPROFILE", ""),
                 str(Path.home()),
                 os.environ.get("USERNAME", ""),
+                os.environ.get("COMPUTERNAME", ""),
             )
             if item
         )
@@ -136,11 +174,29 @@ def sanitize_text(
             flags=re.IGNORECASE,
         )
 
+    text = USER_PROFILE_PATTERN.sub("<KULLANICI_PROFILI>", text)
+    text = QUOTED_UNC_PATTERN.sub("<UNC_YOLU>", text)
+    text = UNC_SPACED_ROOT_PATTERN.sub("<UNC_YOLU>", text)
+    text = UNC_ROOT_PATTERN.sub("<UNC_YOLU>", text)
+    text = URI_USERINFO_PATTERN.sub(
+        lambda match: f"{match.group(1)}<MASKELENDI>:<MASKELENDI>@",
+        text,
+    )
     text = EMAIL_PATTERN.sub("<E-POSTA>", text)
     text = IPV4_PATTERN.sub("<IP_ADRESI>", text)
+    text = IPV6_CANDIDATE_PATTERN.sub(_mask_ipv6, text)
     text = MAC_PATTERN.sub("<MAC_ADRESI>", text)
     text = PRODUCT_KEY_PATTERN.sub("<URUN_ANAHTARI>", text)
-    text = SECRET_PATTERN.sub(r"\1=<MASKELENDI>", text)
+    text = AUTHORIZATION_PATTERN.sub(
+        lambda match: f"{match.group(1)} <MASKELENDI>",
+        text,
+    )
+    text = BEARER_PATTERN.sub("Bearer <MASKELENDI>", text)
+    text = URL_SECRET_PATTERN.sub(r"\1<MASKELENDI>", text)
+    text = SECRET_PATTERN.sub(
+        lambda match: f"{match.group(1)}=<MASKELENDI>",
+        text,
+    )
     return text
 
 
