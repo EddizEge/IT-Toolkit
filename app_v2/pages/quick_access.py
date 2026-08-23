@@ -5,15 +5,16 @@ from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
     QLabel,
-    QMessageBox,
     QPushButton,
     QScrollArea,
     QVBoxLayout,
     QWidget,
 )
 
+from app_v2.action_confirmation import confirm_operation
 from app_v2.presets import TECHNICIAN_PRESETS, TechnicianPreset
 from app_v2.registry import ToolAction, find_action
+from app_v2.services.action_safety import impact_for_preset
 from app_v2.services.preferences import ToolPreferences
 from app_v2.services.task_manager import TaskManager
 from app_v2.widgets import clear_layout
@@ -207,16 +208,8 @@ class QuickAccessPage(QWidget):
         return row
 
     def _run_preset(self, preset: TechnicianPreset) -> None:
-        if preset.risk == "caution":
-            answer = QMessageBox.question(
-                self,
-                "Hazır akışı onayla",
-                f"{preset.title}\n\n{preset.description}\n\nBu akışı başlatmak istiyor musunuz?",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel,
-                QMessageBox.StandardButton.Cancel,
-            )
-            if answer != QMessageBox.StandardButton.Yes:
-                return
+        if not confirm_operation(self, impact_for_preset(preset)):
+            return
         task = self.task_manager.start_command(
             preset.title,
             preset.command,

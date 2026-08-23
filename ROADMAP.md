@@ -120,6 +120,8 @@ raporu ekleyebiliyor; kullanıcılar maskelenmiş hata/öneri raporunu GitHub
 
 ## v0.7.0-beta — Güvenli yetkili işlemler
 
+**Durum:** Geliştiriliyor — Aşama A ve B tamamlandı (23 Ağustos 2026)
+
 **Hedef:** Yönetici işlemlerini daha kontrollü ve geri alınabilir yapmak.
 
 - Ayrı, dar kapsamlı yetkili yardımcı süreç
@@ -131,6 +133,9 @@ raporu ekleyebiliyor; kullanıcılar maskelenmiş hata/öneri raporunu GitHub
 
 **Çıkış ölçütü:** Yetki yükseltme yalnızca gerektiğinde yapılmalı ve kritik
 değişiklikler denetlenebilir olmalı.
+
+Ayrıntılı uygulama aşamaları ve kabul ölçütleri için
+[`docs/plans/v0.7.0-beta.md`](docs/plans/v0.7.0-beta.md) belgesine bakın.
 
 ## v0.8.0-beta — Kalite ve uyumluluk
 

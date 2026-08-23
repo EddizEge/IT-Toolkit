@@ -4,6 +4,10 @@ from PySide6.QtWidgets import QInputDialog, QWidget
 
 from app_v2.pages.tools_page import ToolsPage
 from app_v2.registry import QUICK_ACTIONS, ToolAction
+from app_v2.services.action_safety import (
+    ExecutionPlan,
+    execution_plan_for_action,
+)
 from app_v2.services.preferences import ToolPreferences
 from app_v2.services.task_manager import TaskManager
 
@@ -25,7 +29,7 @@ class QuickPage(ToolsPage):
             preferences=preferences,
         )
 
-    def _schedule_shutdown(self, action: ToolAction) -> None:
+    def _schedule_shutdown(self, action: ToolAction) -> ExecutionPlan | None:
         minutes, accepted = QInputDialog.getInt(
             self,
             "Zamanlı kapatma",
@@ -36,10 +40,20 @@ class QuickPage(ToolsPage):
             1,
         )
         if not accepted:
-            return
-        self.start_command(
+            return None
+        return execution_plan_for_action(
             action,
-            f"shutdown /s /t {minutes * 60}",
-            admin=False,
+            command=f"shutdown /s /t {minutes * 60}",
+            target=f"Bu bilgisayar • {minutes} dakika sonra",
+            admin_required=False,
             keep_open=False,
+            effect=(
+                f"Windows {minutes} dakika sonra oturumu kapatıp "
+                "bilgisayarı kapatacak."
+            ),
+            interruption="Açık uygulamalar ve kullanıcı oturumu kapatılacak.",
+            rollback=(
+                "Süre dolmadan “Zamanlı kapatmayı iptal et” işlemiyle "
+                "zamanlayıcı kaldırılabilir."
+            ),
         )

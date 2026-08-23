@@ -179,6 +179,10 @@ class WifiQrDialog(QDialog):
         layout.addWidget(self.preview)
         layout.addLayout(button_row)
 
+    @property
+    def has_generated_code(self) -> bool:
+        return self._png_data is not None
+
     @staticmethod
     def _escape(value: str) -> str:
         result = value.replace("\\", "\\\\")

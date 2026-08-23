@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from PySide6.QtCore import QUrl
-from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import QDialog, QWidget
 
 from app_v2.dialogs import InstallerDialog
@@ -12,6 +10,10 @@ from app_v2.registry import (
     PROGRAM_ACTIONS,
     PackageItem,
     ToolAction,
+)
+from app_v2.services.action_safety import (
+    ExecutionPlan,
+    execution_plan_for_action,
 )
 from app_v2.services.command_builder import fail_fast_sequence
 from app_v2.services.preferences import ToolPreferences
@@ -38,16 +40,22 @@ class ProgramsPage(ToolsPage):
             preferences=preferences,
         )
 
-    def _open_basic_installer(self, action: ToolAction) -> None:
-        self._open_installer(
+    def _open_basic_installer(
+        self,
+        action: ToolAction,
+    ) -> ExecutionPlan | None:
+        return self._open_installer(
             action,
             "Temel Uygulamalar",
             "Kurulmasını istediğiniz uygulamaları seçin.",
             BASIC_PACKAGES,
         )
 
-    def _open_driver_installer(self, action: ToolAction) -> None:
-        self._open_installer(
+    def _open_driver_installer(
+        self,
+        action: ToolAction,
+    ) -> ExecutionPlan | None:
+        return self._open_installer(
             action,
             "Sürücü ve Üretici Araçları",
             "Resmi uygulamaları veya üretici destek bağlantılarını seçin.",
@@ -60,18 +68,17 @@ class ProgramsPage(ToolsPage):
         title: str,
         subtitle: str,
         packages: tuple[PackageItem, ...],
-    ) -> None:
+    ) -> ExecutionPlan | None:
         dialog = InstallerDialog(title, subtitle, packages, self)
         if dialog.exec() != QDialog.DialogCode.Accepted:
-            return
+            return None
 
         selected = dialog.selected_packages()
         winget_packages = [item for item in selected if item.source == "winget"]
-        urls = [item.package_id for item in selected if item.source == "url"]
-
-        for url in urls:
-            QDesktopServices.openUrl(QUrl(url))
-
+        urls = tuple(
+            item.package_id for item in selected if item.source == "url"
+        )
+        command = ""
         if winget_packages:
             command = fail_fast_sequence(
                 "winget install -e "
@@ -79,15 +86,34 @@ class ProgramsPage(ToolsPage):
                 "--accept-package-agreements --accept-source-agreements"
                 for item in winget_packages
             )
-            self.start_command(
-                action,
-                command,
-                admin=True,
-                keep_open=True,
+        selected_names = ", ".join(item.name for item in selected)
+        effect_parts = []
+        if winget_packages:
+            effect_parts.append(
+                f"{len(winget_packages)} paket Winget ile kurulacak"
             )
-        elif urls:
-            self.report(
-                action.title,
-                True,
-                f"{len(urls)} resmi bağlantı tarayıcıda açıldı.",
+        if urls:
+            effect_parts.append(
+                f"{len(urls)} resmi üretici bağlantısı tarayıcıda açılacak"
             )
+        return execution_plan_for_action(
+            action,
+            command=command,
+            urls=urls,
+            target=selected_names,
+            admin_required=bool(winget_packages),
+            keep_open=bool(winget_packages),
+            effect="; ".join(effect_parts) + ".",
+            interruption=(
+                "Kurulumlar açık uygulamaların kapatılmasını veya daha sonra "
+                "yeniden başlatmayı gerektirebilir."
+                if winget_packages
+                else "Sistem ayarlarında doğrudan değişiklik yapılmayacak."
+            ),
+            rollback=(
+                "Kurulan paketler Windows uygulama kaldırma ekranından "
+                "kaldırılabilir."
+                if winget_packages
+                else "Açılan bağlantılar kapatılarak işlem sonlandırılabilir."
+            ),
+        )

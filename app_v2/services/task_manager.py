@@ -13,7 +13,6 @@ from pathlib import Path
 
 from PySide6.QtCore import QObject, QProcess, QTimer, Signal
 
-from app_v2.registry import ToolAction
 from app_v2.services.command_runner import (
     CREATE_NO_WINDOW,
     create_command_script,
@@ -114,15 +113,6 @@ class TaskManager(QObject):
 
     def task(self, task_id: str) -> TaskRecord | None:
         return next((item for item in self._tasks if item.id == task_id), None)
-
-    def start_action(self, action: ToolAction) -> TaskRecord:
-        return self.start_command(
-            action.title,
-            action.command,
-            category=action.category,
-            admin=action.admin,
-            keep_open=action.keep_open,
-        )
 
     def start_command(
         self,

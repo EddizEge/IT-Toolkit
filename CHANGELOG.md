@@ -5,7 +5,47 @@ izler ve proje [SemVer](https://semver.org/) kullanır.
 
 ## [Yayınlanmadı]
 
-Bir sonraki sürüm için henüz yayıma hazır değişiklik yok.
+### Eklendi
+
+- v0.7 için merkezi `OperationImpact` güvenlik politikası ve ayrıntılı teknik
+  uygulama planı
+- Seçilen klasör, sürücü, süre ve paketleri değişmez biçimde taşıyan
+  `ExecutionPlan` modeli
+- Yönetici yetkisi isteyen işlemlerde etki, hedef, UAC, kesinti ve geri alma
+  bilgisini gösteren ortak onay penceresi
+- Kritik işlemlerde `ONAYLA` yazılmasını gerektiren ikinci son onay aşaması
+- Kritik araçlar ve SMBv1 yön değişiklikleri için açık etki/geri alma bilgileri
+
+### Değiştirildi
+
+- Sistem Yönetimi, diğer araç sayfaları ve teknisyen hazır akışları aynı
+  merkezi güvenlik kapısını kullanıyor
+- `normal` düzeyinde olsa bile yönetici isteyen işlemler artık UAC açılmadan önce
+  kullanıcıya etki özeti gösteriyor
+- SMBv1 açma işlemi kritik, kapatma işlemi dikkat düzeyinde değerlendiriliyor
+- Sahiplik, boş alan temizleme, zamanlı kapatma ve toplu kurulum akışları
+  parametreleri önce topluyor; gerçek hedef merkezi onayda gösteriliyor
+
+### Güvenlik
+
+- Kritik işlemler iki onay tamamlanmadan görev yöneticisine veya UAC akışına
+  ulaşamıyor
+- İptal varsayılan seçim olarak korunuyor; kritik başlatma düğmesi doğru yazılı
+  onaya kadar devre dışı kalıyor
+- Winget paketi içeren dinamik kurulumlar çözümlenmiş yönetici gereksinimiyle UAC
+  öncesi etki özetine giriyor; onay iptalinde paket veya bağlantı açılmıyor
+- Kayıtlı bir yönetici işleminin yetki gereksinimi işlem planında düşürülemiyor
+
+### Kalite
+
+- Güvenlik politikası, onay pencereleri, araç/toggle ve hazır akış geçişleri
+  için regresyon testleri eklendi
+- Hedef seçimi, seçim/onay iptali, dinamik Winget yetkisi ve son kullanılanlar
+  davranışı için uçtan uca sayfa testleri eklendi
+- Paketlenmiş geliştirme EXE’sinde iki aşamalı onay akışı görsel olarak
+  ve dinamik Winget paket planı doğrulandı; test sırasında hiçbir Windows ayarı
+  veya paketi değiştirilmedi
+- Toplam 72 otomatik test başarıyla tamamlandı
 
 ## [0.6.0-beta.2] - 2026-08-21
 

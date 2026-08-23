@@ -19,6 +19,9 @@ class ToolAction:
     keep_open: bool = True
     risk: str = "normal"
     handler: str | None = None
+    impact: str = ""
+    interruption: str = ""
+    rollback: str = ""
 
 
 @dataclass(frozen=True)
@@ -29,6 +32,12 @@ class ToggleAction:
     command_on: str
     command_off: str
     risk: str = "caution"
+    risk_on: str = ""
+    risk_off: str = ""
+    impact_on: str = ""
+    impact_off: str = ""
+    interruption: str = ""
+    rollback: str = ""
 
 
 @dataclass(frozen=True)
@@ -134,6 +143,15 @@ SYSTEM_ACTIONS = (
         r'reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Terminal Server" /v fDenyTSConnections /t REG_DWORD /d 0 /f & netsh advfirewall firewall set rule group="@FirewallAPI.dll,-28752" new enable=Yes',
         admin=True,
         risk="danger",
+        impact=(
+            "Uzak Masaüstü bağlantıları kabul edilecek ve ilgili Windows "
+            "Güvenlik Duvarı kuralları etkinleştirilecek."
+        ),
+        interruption="Ağ erişim yüzeyi değişir; yeniden başlatma beklenmez.",
+        rollback=(
+            "RDP bağlantılarını yeniden kapatıp ilgili güvenlik duvarı "
+            "kurallarını devre dışı bırakın."
+        ),
     ),
 )
 
@@ -269,6 +287,15 @@ NETWORK_ACTIONS = (
         "netsh advfirewall reset",
         admin=True,
         risk="danger",
+        impact=(
+            "Tüm özel Windows Güvenlik Duvarı kuralları silinerek varsayılan "
+            "kurallara dönülecek."
+        ),
+        interruption="Özel ağ erişimleri ve uygulama bağlantıları kesilebilir.",
+        rollback=(
+            "Önceden dışa aktarılmış bir güvenlik duvarı politikası yoksa "
+            "özel kurallar otomatik geri getirilemez."
+        ),
     ),
 )
 
@@ -281,6 +308,15 @@ NETWORK_TOGGLES = (
         r'powershell.exe -NoProfile -Command "Enable-WindowsOptionalFeature -Online -FeatureName SMB1Protocol -All -NoRestart"',
         r'powershell.exe -NoProfile -Command "Disable-WindowsOptionalFeature -Online -FeatureName SMB1Protocol -NoRestart"',
         risk="danger",
+        risk_on="danger",
+        risk_off="caution",
+        impact_on=(
+            "Güvenliği zayıf ve eski SMBv1 protokolü Windows özelliği olarak "
+            "etkinleştirilecek."
+        ),
+        impact_off="Eski SMBv1 protokolü devre dışı bırakılacak.",
+        interruption="Değişikliğin tamamlanması için yeniden başlatma gerekebilir.",
+        rollback="Ayar ters yönde değiştirilerek önceki duruma döndürülebilir.",
     ),
 )
 
@@ -312,10 +348,35 @@ QUICK_ACTIONS = (
     ),
     ToolAction("windbg", "WinDbg aracını kur", "Microsoft'un resmi hata ayıklama aracını Winget ile kurar.", "Tanılama ve Kurtarma", "winget install --id Microsoft.WinDbg -e --accept-package-agreements --accept-source-agreements", admin=True),
     ToolAction("task_manager_unlock", "Görev Yöneticisi engelini kaldır", "DisableTaskMgr ilke değerini kaldırır.", "Tanılama ve Kurtarma", r'reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\System" /v DisableTaskMgr /f', admin=True, risk="caution"),
-    ToolAction("kill_hung", "Yanıt vermeyen uygulamaları kapat", "Yanıt vermiyor durumundaki uygulamaları zorla sonlandırır.", "Tanılama ve Kurtarma", r'taskkill /f /fi "status eq not responding"', admin=True, risk="danger"),
+    ToolAction(
+        "kill_hung",
+        "Yanıt vermeyen uygulamaları kapat",
+        "Yanıt vermiyor durumundaki uygulamaları zorla sonlandırır.",
+        "Tanılama ve Kurtarma",
+        r'taskkill /f /fi "status eq not responding"',
+        admin=True,
+        risk="danger",
+        impact="Yanıt vermeyen bütün uygulamalar zorla sonlandırılacak.",
+        interruption="Etkilenen uygulamalar hemen kapanır.",
+        rollback="Kaydedilmemiş uygulama verileri geri getirilemez.",
+    ),
     ToolAction("shutdown_schedule", "Zamanlı kapatma ayarla", "Belirleyeceğiniz dakika sonunda bilgisayarı kapatır.", "Güç ve Güvenli Mod", "", handler="shutdown_schedule", risk="caution"),
     ToolAction("shutdown_cancel", "Zamanlı kapatmayı iptal et", "Bekleyen Windows kapatma zamanlayıcısını iptal eder.", "Güç ve Güvenli Mod", "shutdown -a", keep_open=False),
-    ToolAction("safe_mode_on", "Sonraki açılışı Güvenli Mod yap", "Windows'un sonraki açılışını ağ destekli Güvenli Mod olarak ayarlar.", "Güç ve Güvenli Mod", r"bcdedit /set {default} safeboot network", admin=True, risk="danger"),
+    ToolAction(
+        "safe_mode_on",
+        "Sonraki açılışı Güvenli Mod yap",
+        "Windows'un sonraki açılışını ağ destekli Güvenli Mod olarak ayarlar.",
+        "Güç ve Güvenli Mod",
+        r"bcdedit /set {default} safeboot network",
+        admin=True,
+        risk="danger",
+        impact="Varsayılan Windows önyükleme kaydına Güvenli Mod zorlaması eklenecek.",
+        interruption="Bir sonraki yeniden başlatma Güvenli Modda gerçekleşir.",
+        rollback=(
+            "“Güvenli Mod zorlamasını kaldır” işlemiyle BCD ayarı geri "
+            "alınabilir."
+        ),
+    ),
     ToolAction("safe_mode_off", "Güvenli Mod zorlamasını kaldır", "Zorunlu Güvenli Mod açılış ayarını kaldırır.", "Güç ve Güvenli Mod", r"bcdedit /deletevalue {default} safeboot", admin=True, risk="caution"),
 )
 
@@ -323,7 +384,25 @@ QUICK_ACTIONS = (
 DATA_ACTIONS = (
     ToolAction("profile_backup", "Kullanıcı profilini yedekle", "Masaüstü, Belgeler, İndirilenler ve Resimler klasörlerini seçtiğiniz hedefe kopyalar.", "Dosya ve Profil Transferi", "", handler="profile_backup"),
     ToolAction("credential_backup", "Windows kimlik bilgilerini yedekle", "Windows'un yerleşik Kimlik Bilgisi Yedekleme sihirbazını açar.", "Dosya ve Profil Transferi", "start credwiz.exe", keep_open=False),
-    ToolAction("take_ownership", "Klasör sahipliğini al", "Seçilen klasörün sahipliğini yerel yöneticiler grubuna verir.", "Dosya ve Profil Transferi", "", admin=True, risk="danger", handler="take_ownership"),
+    ToolAction(
+        "take_ownership",
+        "Klasör sahipliğini al",
+        "Seçilen klasörün sahipliğini yerel yöneticiler grubuna verir.",
+        "Dosya ve Profil Transferi",
+        "",
+        admin=True,
+        risk="danger",
+        handler="take_ownership",
+        impact=(
+            "Seçilen klasör ve alt öğelerinin sahibi değiştirilecek; yerel "
+            "yöneticilere tam erişim verilecek."
+        ),
+        interruption="Mevcut dosya izinleri ve uygulama erişimleri etkilenebilir.",
+        rollback=(
+            "Önceki sahip ve ACL bilgileri kaydedilmediyse otomatik geri alma "
+            "yoktur."
+        ),
+    ),
     ToolAction(
         "inventory",
         "PC envanter raporu oluştur",
@@ -339,7 +418,22 @@ DATA_ACTIONS = (
         keep_open=False,
     ),
     ToolAction("aomei", "AOMEI Backupper Standard kur", "Resmi Winget paketinden disk yedekleme ve klonlama aracını kurar.", "Disk ve Yedekleme", "winget install --id AOMEI.Backupper.Standard -e --accept-package-agreements --accept-source-agreements", admin=True),
-    ToolAction("wipe_free_space", "Boş disk alanını güvenli temizle", "Seçilen sürücünün yalnızca boş alanını üzerine yazarak eski silinmiş verilerin kurtarılmasını zorlaştırır.", "Disk ve Yedekleme", "", admin=True, risk="danger", handler="wipe_free_space"),
+    ToolAction(
+        "wipe_free_space",
+        "Boş disk alanını güvenli temizle",
+        "Seçilen sürücünün yalnızca boş alanını üzerine yazarak eski silinmiş verilerin kurtarılmasını zorlaştırır.",
+        "Disk ve Yedekleme",
+        "",
+        admin=True,
+        risk="danger",
+        handler="wipe_free_space",
+        impact=(
+            "Seçilen sürücünün boş alanı üzerine yazılacak; daha önce silinmiş "
+            "verilerin kurtarılması zorlaşacak."
+        ),
+        interruption="Uzun sürebilir ve yoğun disk kullanımı oluşturur.",
+        rollback="Üzerine yazılan eski silinmiş veriler geri getirilemez.",
+    ),
 )
 
 
@@ -383,6 +477,12 @@ PROGRAM_ACTIONS = (
         ),
         admin=True,
         risk="danger",
+        impact=(
+            "Bulunursa yalnızca TikTok, Candy Crush ve McAfee Store "
+            "paketleri bütün kullanıcılardan kaldırılacak."
+        ),
+        interruption="Kaldırılan uygulamalar açık ise kapanabilir.",
+        rollback="Gerekli uygulamalar Microsoft Store üzerinden yeniden kurulabilir.",
     ),
     ToolAction("winget_update", "Winget kaynaklarını güncelle", "Paket yöneticisinin uygulama kaynaklarını yeniler.", "Sistem Temizliği", "winget source update", admin=True),
 )

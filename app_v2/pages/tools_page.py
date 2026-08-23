@@ -3,19 +3,25 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Callable
 
-from PySide6.QtCore import QTimer, Signal
-from PySide6.QtGui import QShowEvent
+from PySide6.QtCore import QTimer, QUrl, Signal
+from PySide6.QtGui import QDesktopServices, QShowEvent
 from PySide6.QtWidgets import (
     QFrame,
     QGridLayout,
     QLabel,
-    QMessageBox,
     QScrollArea,
     QVBoxLayout,
     QWidget,
 )
 
+from app_v2.action_confirmation import confirm_operation
 from app_v2.registry import ToggleAction, ToolAction
+from app_v2.services.action_safety import (
+    ExecutionPlan,
+    execution_plan_for_action,
+    impact_for_action,
+    impact_for_toggle,
+)
 from app_v2.services.preferences import ToolPreferences
 from app_v2.services.settings_service import get_toggle_status
 from app_v2.services.task_manager import TaskManager
@@ -31,7 +37,12 @@ class ToolsPage(QWidget):
         subtitle: str,
         actions: tuple[ToolAction, ...],
         toggles: tuple[ToggleAction, ...] = (),
-        custom_handlers: dict[str, Callable[[ToolAction], None]] | None = None,
+        custom_handlers: dict[
+            str,
+            Callable[[ToolAction], ExecutionPlan | None],
+        ]
+        | None = None,
+        ui_handlers: dict[str, Callable[[ToolAction], bool]] | None = None,
         parent: QWidget | None = None,
         task_manager: TaskManager | None = None,
         preferences: ToolPreferences | None = None,
@@ -41,7 +52,8 @@ class ToolsPage(QWidget):
         self.page_title = title
         self.task_manager = task_manager or TaskManager(self)
         self.preferences = preferences
-        self._handlers = custom_handlers or {}
+        self._plan_handlers = custom_handlers or {}
+        self._ui_handlers = ui_handlers or {}
         self._tiles: list[ActionTile] = []
         self._sections: list[tuple[QWidget, list[ActionTile]]] = []
         self._toggle_rows: dict[str, ToggleRow] = {}
@@ -139,50 +151,75 @@ class ToolsPage(QWidget):
                 toggle_match = toggle_match or match
             self._toggle_section.setVisible(toggle_match)
 
-    def _confirm_action(self, action: ToolAction) -> bool:
-        if action.risk not in {"caution", "danger"}:
-            return True
-        box = QMessageBox(self)
-        box.setIcon(
-            QMessageBox.Icon.Critical
-            if action.risk == "danger"
-            else QMessageBox.Icon.Warning
-        )
-        box.setWindowTitle("İşlemi onayla")
-        box.setText(action.title)
-        box.setInformativeText(
-            f"{action.description}\n\nBu işlemi başlatmak istiyor musunuz?"
-        )
-        box.setStandardButtons(
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel
-        )
-        box.setDefaultButton(QMessageBox.StandardButton.Cancel)
-        return box.exec() == QMessageBox.StandardButton.Yes
-
     def execute_action(self, action: ToolAction) -> None:
-        if not self._confirm_action(action):
-            return
-        if self.preferences:
-            self.preferences.record_recent(action.key)
         if action.handler:
-            handler = self._handlers.get(action.handler)
+            ui_handler = self._ui_handlers.get(action.handler)
+            if ui_handler:
+                if not confirm_operation(self, impact_for_action(action)):
+                    return
+                if ui_handler(action):
+                    self.record_recent(action.key)
+                return
+            handler = self._plan_handlers.get(action.handler)
             if not handler:
                 self.status_message.emit(
                     f"{action.title}: özel işlem tanımlı değil.",
                     False,
                 )
                 return
-            handler(action)
+            plan = handler(action)
+            if plan is not None:
+                self._execute_plan(plan)
             return
+        self._execute_plan(execution_plan_for_action(action))
 
-        task = self.task_manager.start_action(action)
+    def _execute_plan(self, plan: ExecutionPlan) -> bool:
+        if not confirm_operation(self, plan.impact):
+            return False
+        task = None
+        if plan.command.strip():
+            task = self.task_manager.start_command(
+                plan.title,
+                plan.command,
+                category=plan.category,
+                admin=plan.admin_required,
+                keep_open=plan.keep_open,
+                success_codes=plan.success_codes,
+            )
+        opened_urls = sum(
+            bool(QDesktopServices.openUrl(QUrl(url))) for url in plan.urls
+        )
+        self.record_recent(plan.action_key)
+        if task is None:
+            ok = opened_urls == len(plan.urls)
+            message = (
+                f"{opened_urls} resmi bağlantı tarayıcıda açıldı."
+                if ok
+                else (
+                    f"{opened_urls}/{len(plan.urls)} bağlantı açıldı. "
+                    "Kalan bağlantıları daha sonra yeniden deneyin."
+                )
+            )
+            self.task_manager.record_result(
+                plan.title,
+                message,
+                success=ok,
+                category=plan.category,
+            )
+            self.status_message.emit(f"{plan.title}: {message}", ok)
+            return True
         ok = task.status not in {"failed", "cancelled", "interrupted"}
         message = (
             task.message
             if task.status in {"failed", "delegated"}
             else "Görev Merkezi'ne eklendi."
         )
-        self.status_message.emit(f"{action.title}: {message}", ok)
+        self.status_message.emit(f"{plan.title}: {message}", ok)
+        return True
+
+    def record_recent(self, action_key: str) -> None:
+        if self.preferences:
+            self.preferences.record_recent(action_key)
 
     def report(self, title: str, ok: bool, message: str) -> None:
         self.task_manager.record_result(
@@ -193,46 +230,8 @@ class ToolsPage(QWidget):
         )
         self.status_message.emit(f"{title}: {message}", ok)
 
-    def start_command(
-        self,
-        action: ToolAction,
-        command: str,
-        *,
-        admin: bool | None = None,
-        keep_open: bool | None = None,
-        success_codes: tuple[int, ...] = (0,),
-    ) -> None:
-        task = self.task_manager.start_command(
-            action.title,
-            command,
-            category=action.category,
-            admin=action.admin if admin is None else admin,
-            keep_open=action.keep_open if keep_open is None else keep_open,
-            success_codes=success_codes,
-        )
-        ok = task.status != "failed"
-        message = (
-            task.message
-            if task.status in {"failed", "delegated"}
-            else "Görev Merkezi'ne eklendi."
-        )
-        self.status_message.emit(f"{action.title}: {message}", ok)
-
     def _change_toggle(self, toggle: ToggleAction, enabled: bool) -> None:
-        target = "açmak" if enabled else "kapatmak"
-        warning = (
-            "\n\nBu eski protokol güvenlik riski taşıyabilir."
-            if toggle.risk == "danger" and enabled
-            else ""
-        )
-        result = QMessageBox.question(
-            self,
-            "Ayar değişikliğini onayla",
-            f"“{toggle.title}” ayarını {target} istiyor musunuz?{warning}",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel,
-            QMessageBox.StandardButton.Cancel,
-        )
-        if result != QMessageBox.StandardButton.Yes:
+        if not confirm_operation(self, impact_for_toggle(toggle, enabled)):
             return
         task = self.task_manager.start_command(
             toggle.title,

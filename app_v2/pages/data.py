@@ -7,6 +7,10 @@ from PySide6.QtWidgets import QFileDialog, QWidget
 
 from app_v2.pages.tools_page import ToolsPage
 from app_v2.registry import DATA_ACTIONS, DATA_TOGGLES, ToolAction
+from app_v2.services.action_safety import (
+    ExecutionPlan,
+    execution_plan_for_action,
+)
 from app_v2.services.command_builder import (
     aggregate_sequence,
     fail_fast_sequence,
@@ -37,13 +41,13 @@ class DataPage(ToolsPage):
             preferences=preferences,
         )
 
-    def _backup_profile(self, action: ToolAction) -> None:
+    def _backup_profile(self, action: ToolAction) -> ExecutionPlan | None:
         destination = QFileDialog.getExistingDirectory(
             self,
             "Profil yedeği için hedef klasörü seçin",
         )
         if not destination:
-            return
+            return None
 
         profile = Path(os.environ.get("USERPROFILE", str(Path.home())))
         commands: list[str] = []
@@ -53,48 +57,51 @@ class DataPage(ToolsPage):
             commands.append(
                 f'robocopy "{source}" "{target}" /E /COPY:DAT /DCOPY:T /R:1 /W:1 /MT:8'
             )
-        self.start_command(
+        return execution_plan_for_action(
             action,
-            aggregate_sequence(commands, max_success_code=7),
-            admin=False,
+            command=aggregate_sequence(commands, max_success_code=7),
+            target=str(Path(destination) / "IT_Toolkit_Profil_Yedek"),
+            admin_required=False,
             keep_open=False,
             success_codes=tuple(range(8)),
         )
 
-    def _take_ownership(self, action: ToolAction) -> None:
+    def _take_ownership(self, action: ToolAction) -> ExecutionPlan | None:
         folder = QFileDialog.getExistingDirectory(
             self,
             "Sahipliği alınacak klasörü seçin",
         )
         if not folder:
-            return
-        self.start_command(
+            return None
+        return execution_plan_for_action(
             action,
-            fail_fast_sequence(
+            command=fail_fast_sequence(
                 (
                     f'takeown /f "{folder}" /r /d y',
                     f'icacls "{folder}" /grant administrators:F /t',
                 )
             ),
-            admin=True,
+            target=folder,
+            admin_required=True,
             keep_open=True,
         )
 
-    def _wipe_free_space(self, action: ToolAction) -> None:
+    def _wipe_free_space(self, action: ToolAction) -> ExecutionPlan | None:
         folder = QFileDialog.getExistingDirectory(
             self,
             "Boş alanı temizlenecek sürücüden bir klasör seçin",
             "C:\\",
         )
         if not folder:
-            return
+            return None
         drive, _ = os.path.splitdrive(folder)
         if not drive:
             self.report(action.title, False, "Yerel bir Windows sürücüsü seçin.")
-            return
-        self.start_command(
+            return None
+        return execution_plan_for_action(
             action,
-            f"cipher /w:{drive}\\",
-            admin=True,
+            command=f"cipher /w:{drive}\\",
+            target=f"{drive}\\ sürücüsünün boş alanı",
+            admin_required=True,
             keep_open=True,
         )

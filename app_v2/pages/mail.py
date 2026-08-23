@@ -7,6 +7,10 @@ from PySide6.QtWidgets import QFileDialog, QWidget
 
 from app_v2.pages.tools_page import ToolsPage
 from app_v2.registry import MAIL_ACTIONS, ToolAction
+from app_v2.services.action_safety import (
+    ExecutionPlan,
+    execution_plan_for_action,
+)
 from app_v2.services.preferences import ToolPreferences
 from app_v2.services.task_manager import TaskManager
 
@@ -28,13 +32,13 @@ class MailPage(ToolsPage):
             preferences=preferences,
         )
 
-    def _backup_pst(self, action: ToolAction) -> None:
+    def _backup_pst(self, action: ToolAction) -> ExecutionPlan | None:
         destination = QFileDialog.getExistingDirectory(
             self,
             "Outlook yedeği için hedef klasörü seçin",
         )
         if not destination:
-            return
+            return None
 
         source = (
             Path(os.environ.get("LOCALAPPDATA", str(Path.home())))
@@ -46,10 +50,11 @@ class MailPage(ToolsPage):
             f'robocopy "{source}" "{target}" *.pst *.ost '
             "/S /COPY:DAT /DCOPY:T /R:1 /W:1 /MT:8"
         )
-        self.start_command(
+        return execution_plan_for_action(
             action,
-            command,
-            admin=False,
+            command=command,
+            target=str(target),
+            admin_required=False,
             keep_open=False,
             success_codes=tuple(range(8)),
         )

@@ -31,6 +31,7 @@ IT-Toolkit/
 ├── app_v2/
 │   ├── __init__.py             # Uygulama sürümü
 │   ├── main_window.py          # Ana pencere, gezinme ve kısayollar
+│   ├── action_confirmation.py  # Ortak etki özeti ve kritik son onay
 │   ├── command_palette.py      # Ctrl+K araç paleti
 │   ├── registry.py             # Araç, anahtar ve paket kayıtları
 │   ├── widgets.py              # Ortak Qt bileşenleri
@@ -41,6 +42,7 @@ IT-Toolkit/
 │   ├── pages/                  # Uygulama ekranları
 │   │   └── feedback.py         # GitHub geri bildirim ve günlük önizleme ekranı
 │   └── services/               # Görev, komut, tercih, sağlık ve sistem servisleri
+│       ├── action_safety.py    # Risk politikası, etki ve değişmez işlem planı
 │       ├── error_logging.py    # Dönen yerel log ve hassas veri maskeleme
 │       ├── feedback_service.py # Rapor metni ve GitHub issue bağlantısı
 │       └── update_service.py   # GitHub Release, SHA-256 ve EXE değiştirme
@@ -85,6 +87,39 @@ ikon kaydı ve gerekiyorsa kısayol birlikte güncellenmelidir.
 Yeni araçlar doğrudan sayfa içine gömülmemeli; merkezi kayda eklenmelidir.
 Her kayıt benzersiz bir anahtar, anlaşılır Türkçe başlık, açıklama, kategori,
 yetki gereksinimi ve doğru risk seviyesi içermelidir.
+
+### İşlem güvenliği
+
+`app_v2/services/action_safety.py`, araç, ayar ve hazır akış kayıtlarını
+`OperationImpact` modeline dönüştürür; çözümlenmiş hedef ve yetki bilgisiyle
+değişmez `ExecutionPlan` üretir. `app_v2/action_confirmation.py`, bütün
+sayfaların kullandığı ortak etki özeti ve kritik son onay pencerelerini yönetir.
+
+- Yönetici isteyen `normal` işlemler ve tüm `caution` işlemler tek aşamalı etki
+  özeti kullanmalıdır.
+- `danger` işlemler etki özeti ile `ONAYLA` yazılı son onaydan geçmelidir.
+- UAC, görev başlatma ve son kullanılan kaydı gerekli onaylardan önce
+  oluşmamalıdır.
+- Hedef, süre veya paket seçen özel araçlarda handler önce parametreleri
+  toplamalı ve `ExecutionPlan | None` döndürmelidir; seçim iptali `None` ile
+  sonuçlanmalıdır.
+- Yalnızca sistem durumunu değiştirmeyen pencere/önizleme akışları
+  `ui_handlers` kullanmalıdır; bu akışlar da callback çağrısından önce merkezi
+  etki politikasından geçmelidir.
+- Sayfa alt sınıfları doğrudan yönetici komutu başlatmamalı; çözümlenmiş plan
+  `ToolsPage` içindeki tek yürütme kapısından geçmelidir.
+- Kayıtta gerekli olan yönetici yetkisi planda düşürülemez. Dinamik olarak
+  yönetici isteyen kurulumlar gerçek planda `admin_required=True` olmalıdır.
+- Aynı plandaki tarayıcı bağlantıları da onay tamamlanmadan açılmamalıdır.
+- Kritik kayıtlar açık `impact`, `interruption` ve `rollback` bilgisi
+  taşımalıdır; genel varsayılan metne bırakılmamalıdır.
+- Sayfalara doğrudan `QMessageBox` tabanlı risk onayı eklenmemeli;
+  `confirm_operation` kullanılmalıdır.
+- Hedef veya süre seçen özel akışlar, parametreleri topladıktan sonra hedefi
+  görünen değişmez bir işlem planı üretmelidir.
+
+v0.7 geliştirme aşamaları ve tamamlanma ölçütleri için
+`docs/plans/v0.7.0-beta.md` izlenmelidir.
 
 ### Görev yürütme
 

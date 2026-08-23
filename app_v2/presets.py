@@ -16,6 +16,9 @@ class TechnicianPreset:
     command: str
     admin: bool = False
     risk: str = "normal"
+    impact: str = ""
+    interruption: str = ""
+    rollback: str = ""
 
 
 TECHNICIAN_PRESETS = (

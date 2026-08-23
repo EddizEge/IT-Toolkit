@@ -21,12 +21,13 @@ class NetworkPage(ToolsPage):
             "Bağlantı tanılama, ağ onarımı ve yerel paylaşım araçları",
             NETWORK_ACTIONS,
             NETWORK_TOGGLES,
-            {"wifi_qr": self._open_wifi_qr},
+            ui_handlers={"wifi_qr": self._open_wifi_qr},
             parent=parent,
             task_manager=task_manager,
             preferences=preferences,
         )
 
-    def _open_wifi_qr(self, action: ToolAction) -> None:
+    def _open_wifi_qr(self, action: ToolAction) -> bool:
         dialog = WifiQrDialog(self)
         dialog.exec()
+        return dialog.has_generated_code

@@ -682,6 +682,58 @@ def build_stylesheet() -> str:
         padding: 4px 8px;
     }}
 
+    QFrame#SafetyDetail {{
+        background: #111821;
+        border: 1px solid {COLORS["border"]};
+        border-radius: 9px;
+    }}
+
+    QLabel#SafetyDetailText {{
+        color: {COLORS["text"]};
+        font-size: 12px;
+    }}
+
+    QLabel#SafetyRiskBadge {{
+        border-radius: 8px;
+        font-size: 10px;
+        font-weight: 800;
+        min-width: 72px;
+        padding: 6px 10px;
+    }}
+
+    QLabel#SafetyRiskBadge[risk="normal"] {{
+        background: #17253A;
+        border: 1px solid #2A456B;
+        color: #8BB6FF;
+    }}
+
+    QLabel#SafetyRiskBadge[risk="caution"] {{
+        background: #332B19;
+        border: 1px solid #6C5728;
+        color: #FFD98A;
+    }}
+
+    QLabel#SafetyRiskBadge[risk="danger"] {{
+        background: #352226;
+        border: 1px solid #743740;
+        color: #FFACB3;
+    }}
+
+    QLineEdit#SafetyConfirmationInput {{
+        background: #101721;
+        border: 1px solid #743740;
+        border-radius: 9px;
+        color: {COLORS["text"]};
+        font-size: 16px;
+        font-weight: 800;
+        min-height: 42px;
+        padding: 0 13px;
+    }}
+
+    QLineEdit#SafetyConfirmationInput:focus {{
+        border: 2px solid {COLORS["danger"]};
+    }}
+
     QToolTip {{
         background: {COLORS["surface_alt"]};
         border: 1px solid {COLORS["border"]};

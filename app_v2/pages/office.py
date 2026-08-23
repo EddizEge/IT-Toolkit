@@ -1,12 +1,14 @@
 from __future__ import annotations
 
-from PySide6.QtCore import QUrl
-from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import QDialog, QWidget
 
 from app_v2.dialogs import InstallerDialog
 from app_v2.pages.tools_page import ToolsPage
 from app_v2.registry import OFFICE_ACTIONS, OFFICE_PACKAGES, ToolAction
+from app_v2.services.action_safety import (
+    ExecutionPlan,
+    execution_plan_for_action,
+)
 from app_v2.services.preferences import ToolPreferences
 from app_v2.services.task_manager import TaskManager
 
@@ -28,7 +30,7 @@ class OfficePage(ToolsPage):
             preferences=preferences,
         )
 
-    def _open_installer(self, action: ToolAction) -> None:
+    def _open_installer(self, action: ToolAction) -> ExecutionPlan | None:
         dialog = InstallerDialog(
             "Microsoft Office Sürümleri",
             "Yalnızca sahip olduğunuz lisansa uygun resmi Microsoft sürümünü seçin.",
@@ -36,12 +38,19 @@ class OfficePage(ToolsPage):
             self,
         )
         if dialog.exec() != QDialog.DialogCode.Accepted:
-            return
+            return None
         selected = dialog.selected_packages()
-        for package in selected:
-            QDesktopServices.openUrl(QUrl(package.package_id))
-        self.report(
-            action.title,
-            True,
-            f"{len(selected)} resmi Microsoft indirme bağlantısı açıldı.",
+        return execution_plan_for_action(
+            action,
+            command="",
+            urls=(package.package_id for package in selected),
+            target=", ".join(package.name for package in selected),
+            admin_required=False,
+            keep_open=False,
+            effect=(
+                f"{len(selected)} resmi Microsoft indirme bağlantısı "
+                "tarayıcıda açılacak."
+            ),
+            interruption="Sistem ayarlarında doğrudan değişiklik yapılmayacak.",
+            rollback="Açılan bağlantılar kapatılarak işlem sonlandırılabilir.",
         )
