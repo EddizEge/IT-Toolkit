@@ -38,3 +38,6 @@ desktop.ini
 # Brand generation intermediates
 /assets/brand/it_toolkit_logo.png
 /assets/brand/it_toolkit_logo_chroma.png
+
+# Yerelde tutulan ajan notları
+/AGENTS.md
